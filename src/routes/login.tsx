@@ -30,7 +30,7 @@ export function LoginPage() {
       <div className="flex flex-col justify-center bg-surface px-6 py-12 sm:px-12">
         <form onSubmit={submit} className="mx-auto w-full max-w-sm">
           <p className="text-[13px] font-medium text-denim">AheadTech360</p>
-          <h1 className="mt-1 text-[28px] leading-tight font-semibold tracking-[-0.02em]">Sign in to the control center</h1>
+          <h1 className="mt-1 text-[28px] leading-tight font-semibold tracking-[-0.02em]">Sign in to Atelier</h1>
           <p className="mt-2 mb-7 text-ink-2">Review what the bots drafted, unblock them, and keep every client's accounts in one place.</p>
           <div className="flex flex-col gap-4">
             <TextField label="Work email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

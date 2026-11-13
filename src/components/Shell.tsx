@@ -65,7 +65,7 @@ export function Shell({ children }: { children: ReactNode }) {
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r border-line bg-surface md:flex">
         <div className="px-4 pt-4 pb-2">
-          <p className="font-semibold tracking-[-0.01em]">SEO Control Center</p>
+          <p className="font-semibold tracking-[-0.01em]">Atelier</p>
           <p className="text-[12.5px] text-ink-3">AheadTech360</p>
         </div>
         {nav}
@@ -88,7 +88,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <button aria-label="Close menu" className="absolute inset-0 bg-black/40" onClick={() => setNavOpen(false)} />
           <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-surface">
             <div className="flex items-center justify-between px-4 pt-3">
-              <p className="font-semibold">SEO Control Center</p>
+              <p className="font-semibold">Atelier</p>
               <IconButton label="Close menu" onClick={() => setNavOpen(false)}>
                 <X size={16} />
               </IconButton>

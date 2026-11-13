@@ -26,7 +26,14 @@ The backend must be running on `VITE_API_URL`. There is no sign-up page: an admi
 
 ## Types
 
-`src/api-types` is generated from the Rust code (`cargo test` in the backend). Don't edit those files by hand.
+`src/api-types` is generated from the Rust backend with ts-rs. Don't edit those files by hand.
+
+```sh
+npm run sync-types    # regenerate from ../atelier-backend (or ATELIER_BACKEND_DIR)
+npm run check-types   # fail if the committed types don't match the backend
+```
+
+Both build only the backend's `export_bindings` tests, with one job and no debug info, so they fit on an 8 GB machine. `sync-types` clears the folder first, so types removed from the backend disappear here too. Run `check-types` before pushing whenever the backend's API changed, and commit the regenerated files.
 
 ## Deploy
 
