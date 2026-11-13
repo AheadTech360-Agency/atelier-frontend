@@ -20,7 +20,7 @@ const NAV = [
 ] as const;
 
 export function useClients() {
-  return useQuery({ queryKey: ["clients"], queryFn: () => api.get<Client[]>("/clients") });
+  return useQuery({ queryKey: ["clients"], queryFn: () => api.get<Client[]>("/clients", { limit: 200 }) });
 }
 
 export function Shell({ children }: { children: ReactNode }) {

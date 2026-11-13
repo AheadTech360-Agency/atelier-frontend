@@ -21,7 +21,7 @@ export function ClientOverviewTab({ clientId }: { clientId: string }) {
 
   const points = useQuery({
     queryKey: ["metrics", clientId, selected],
-    queryFn: () => api.get<MetricPoint[]>("/metrics", { client_id: clientId, source, metric }),
+    queryFn: () => api.get<MetricPoint[]>("/metrics", { client_id: clientId, source, metric, daily: true }),
     enabled: !!selected,
   });
   const reports = useQuery({ queryKey: ["reports", clientId, "recent"], queryFn: () => api.get<Report[]>("/reports", { client_id: clientId, limit: 5 }) });

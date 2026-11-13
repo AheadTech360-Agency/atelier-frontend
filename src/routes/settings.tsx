@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
 import { api } from "@/lib/api";
+import { usePagedList } from "@/lib/paged";
 import { useSession } from "@/lib/session";
 import { AGENTS, agentName, ago, humanize } from "@/lib/format";
 import { useClients } from "@/components/Shell";
@@ -15,6 +16,7 @@ import {
   ErrorNote,
   Field,
   Input,
+  LoadMore,
   PageHeader,
   Panel,
   Select,
@@ -77,7 +79,7 @@ function TeamTab() {
   const { isAdmin, me } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
-  const q = useQuery({ queryKey: ["team"], queryFn: () => api.get<TeamMember[]>("/team") });
+  const q = useQuery({ queryKey: ["team"], queryFn: () => api.get<TeamMember[]>("/team", { limit: 200 }) });
   const [form, setForm] = useState({ email: "", full_name: "", password: "", role: "reviewer" });
   const [resetting, setResetting] = useState<TeamMember | null>(null);
   const [removing, setRemoving] = useState<TeamMember | null>(null);
@@ -272,7 +274,7 @@ function KeysTab() {
   const qc = useQueryClient();
   const toast = useToast();
   const clients = useClients();
-  const q = useQuery({ queryKey: ["keys"], queryFn: () => api.get<AgentKey[]>("/agent-keys") });
+  const q = useQuery({ queryKey: ["keys"], queryFn: () => api.get<AgentKey[]>("/agent-keys", { limit: 200 }) });
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<CreatedAgentKey | null>(null);
   const revoke = useMutation({
@@ -415,7 +417,7 @@ function ShowKey({ created, onClose }: { created: CreatedAgentKey; onClose: () =
 
 function AuditTab() {
   const clients = useClients();
-  const q = useQuery({ queryKey: ["audit"], queryFn: () => api.get<AuditEntry[]>("/audit-log", { limit: 300 }) });
+  const q = usePagedList<AuditEntry>(["audit"], "/audit-log", {}, 50);
   const clientName = (id: string | null) => (id ? (clients.data?.find((c) => c.id === id)?.name ?? "") : "");
   return (
     <Panel title="Audit log">
@@ -423,7 +425,7 @@ function AuditTab() {
         <Skeleton />
       ) : q.error ? (
         <ErrorNote error={q.error} />
-      ) : !q.data?.length ? (
+      ) : !q.items.length ? (
         <EmptyState title="Nothing logged yet" body="Credential reads, approvals, publish checks and key changes are recorded here." />
       ) : (
         <div className="overflow-x-auto">
@@ -437,7 +439,7 @@ function AuditTab() {
               </tr>
             </thead>
             <tbody>
-              {q.data.map((e) => (
+              {q.items.map((e) => (
                 <tr key={e.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-2 whitespace-nowrap text-ink-2" title={e.created_at}>
                     {ago(e.created_at)}
@@ -451,6 +453,7 @@ function AuditTab() {
           </table>
         </div>
       )}
+      <LoadMore hasMore={q.hasMore} loading={q.loadingMore} onClick={q.loadMore} />
     </Panel>
   );
 }

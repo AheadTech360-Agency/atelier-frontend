@@ -269,6 +269,18 @@ export function ErrorNote({ error }: { error: unknown }) {
   );
 }
 
+/** "Load more" for paged lists. Renders nothing when there is no next page. */
+export function LoadMore({ hasMore, loading, onClick }: { hasMore: boolean; loading: boolean; onClick: () => void }) {
+  if (!hasMore) return null;
+  return (
+    <div className="flex justify-center border-t border-line p-3">
+      <Button size="sm" busy={loading} onClick={onClick}>
+        Load more
+      </Button>
+    </div>
+  );
+}
+
 // Tabs (controlled, state lives in the URL where the caller wants) ---------------
 
 export function Tabs({ tabs, value, onChange }: { tabs: { id: string; label: string; count?: number }[]; value: string; onChange: (id: string) => void }) {

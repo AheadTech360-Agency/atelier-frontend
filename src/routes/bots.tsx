@@ -8,16 +8,19 @@ import { useClients } from "@/components/Shell";
 import { Button, Dialog, ErrorNote, Field, PageHeader, Panel, Select, Skeleton, StatusBadge, TextField, errorText, useToast } from "@/components/ui";
 import { ProspectReviewButton, ProspectReviewsPanel } from "@/components/ProspectReviews";
 import type { Agent } from "@/api-types/Agent";
-import type { Run } from "@/api-types/Run";
-import type { Task } from "@/api-types/Task";
+import type { AgentStats } from "@/api-types/AgentStats";
 import type { TriggerResult } from "@/api-types/TriggerResult";
 
 export function BotsPage() {
   const { isAdmin } = useSession();
   const clientId = useScopedClient();
   const agents = useQuery({ queryKey: ["agents"], queryFn: () => api.get<Agent[]>("/agents") });
-  const runs = useQuery({ queryKey: ["runs", "bots", clientId], queryFn: () => api.get<Run[]>("/runs", { client_id: clientId, limit: 300 }), refetchInterval: 60_000 });
-  const tasks = useQuery({ queryKey: ["tasks", "open", clientId], queryFn: () => api.get<Task[]>("/tasks", { client_id: clientId, limit: 500 }) });
+  // Last run, failures and queue per bot, computed in the database: one small row per bot.
+  const stats = useQuery({
+    queryKey: ["agent-stats", clientId],
+    queryFn: () => api.get<AgentStats[]>("/agents/stats", { client_id: clientId }),
+    refetchInterval: 60_000,
+  });
   const [editing, setEditing] = useState<Agent | null>(null);
   const [running, setRunning] = useState<Agent | null>(null);
 
@@ -48,10 +51,10 @@ export function BotsPage() {
             <ProspectReviewsPanel />
           </div>
           {agents.data!.map((a) => {
-            const mine = (runs.data ?? []).filter((r) => r.agent_id === a.id);
-            const last = mine[0];
-            const failed7 = mine.filter((r) => r.status === "failed" && Date.now() - new Date(r.started_at).getTime() < 7 * 86400000).length;
-            const queue = (tasks.data ?? []).filter((t) => t.to_agent === a.id && ["queued", "in_progress", "blocked"].includes(t.status)).length;
+            const st = stats.data?.find((x) => x.agent_id === a.id);
+            const last = st?.last_run_at ? { status: st.last_run_status ?? "", started_at: st.last_run_at, summary: st.last_run_summary, error: st.last_run_error } : null;
+            const failed7 = st?.failed_7d ?? 0;
+            const queue = st?.tasks_open ?? 0;
             return (
               <Panel
                 key={a.id}

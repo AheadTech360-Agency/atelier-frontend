@@ -2,9 +2,10 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Markdown from "react-markdown";
 import { api } from "@/lib/api";
+import { usePagedList } from "@/lib/paged";
 import { useSession } from "@/lib/session";
 import { ago, humanize } from "@/lib/format";
-import { Badge, Button, ConfirmDelete, Dialog, EmptyState, ErrorNote, Field, Panel, Skeleton, TextField, Textarea, errorText, useToast } from "./ui";
+import { Badge, Button, ConfirmDelete, Dialog, EmptyState, ErrorNote, Field, LoadMore, Panel, Skeleton, TextField, Textarea, errorText, useToast } from "./ui";
 import type { Prospect } from "@/api-types/Prospect";
 import type { ProspectDetail } from "@/api-types/ProspectDetail";
 import type { ProspectRequested } from "@/api-types/ProspectRequested";
@@ -79,7 +80,7 @@ function RequestDialog({ onClose }: { onClose: () => void }) {
 
 /** List of reviews with their status; click one to read the report. */
 export function ProspectReviewsPanel() {
-  const q = useQuery({ queryKey: ["prospects"], queryFn: () => api.get<Prospect[]>("/prospects"), refetchInterval: 30_000 });
+  const q = usePagedList<Prospect>(["prospects"], "/prospects", {}, 20);
   const [openId, setOpenId] = useState<string | null>(null);
   return (
     <Panel title="Prospect reviews">
@@ -87,11 +88,11 @@ export function ProspectReviewsPanel() {
         <Skeleton rows={2} />
       ) : q.error ? (
         <ErrorNote error={q.error} />
-      ) : !q.data?.length ? (
+      ) : !q.items.length ? (
         <EmptyState title="No prospect reviews yet" body="Use Prospect review to have the Technical Auditor look at a store's public pages before a sales call." />
       ) : (
         <ul className="divide-y divide-line">
-          {q.data.map((p) => (
+          {q.items.map((p) => (
             <li key={p.id}>
               <button onClick={() => setOpenId(p.id)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-sunken">
                 <span className="min-w-0 flex-1">
@@ -107,6 +108,7 @@ export function ProspectReviewsPanel() {
           ))}
         </ul>
       )}
+      <LoadMore hasMore={q.hasMore} loading={q.loadingMore} onClick={q.loadMore} />
       {openId ? <ProspectDialog id={openId} onClose={() => setOpenId(null)} /> : null}
     </Panel>
   );

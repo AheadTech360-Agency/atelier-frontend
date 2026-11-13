@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Markdown from "react-markdown";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { api } from "@/lib/api";
+import { usePagedList } from "@/lib/paged";
 import { supabase } from "@/lib/supabase";
 import { useScopedClient, useSession } from "@/lib/session";
 import { AGENTS, agentName, ago, daysOpen, humanize } from "@/lib/format";
@@ -13,6 +14,7 @@ import {
   cx,
   EmptyState,
   ErrorNote,
+  LoadMore,
   PageHeader,
   PriorityBadge,
   Select,
@@ -59,20 +61,15 @@ export function InboxPage() {
   const status = search.status ?? "open";
   const setSearch = (patch: Partial<InboxSearch>) => navigate({ search: (s) => ({ ...s, ...patch }) });
 
-  const list = useQuery({
-    queryKey: ["hr", { clientId, status, agent: search.agent, priority: search.priority, stale: search.stale }],
-    queryFn: () =>
-      api.get<HumanRequired[]>("/human-required", {
-        client_id: clientId,
-        status,
-        agent_id: search.agent,
-        priority: search.priority,
-        older_than_days: search.stale ? 3 : undefined,
-        limit: 200,
-      }),
+  const list = usePagedList<HumanRequired>(["hr"], "/human-required", {
+    client_id: clientId,
+    status,
+    agent_id: search.agent,
+    priority: search.priority,
+    older_than_days: search.stale ? 3 : undefined,
   });
 
-  const items = list.data ?? [];
+  const items = list.items;
   const selected = items.find((i) => i.id === search.item) ?? null;
 
   // j / k to move through the queue.
@@ -170,14 +167,15 @@ export function InboxPage() {
               ))}
             </ul>
           )}
+          <LoadMore hasMore={list.hasMore} loading={list.loadingMore} onClick={list.loadMore} />
         </div>
 
         {/* Detail */}
         <div className={cx("min-h-0 flex-1 overflow-y-auto bg-surface", !selected && "max-md:hidden")}>
           {selected ? (
-            <Detail
+            <FullDetail
               key={selected.id}
-              item={selected}
+              id={selected.id}
               onBack={() => setSearch({ item: undefined })}
               onDecided={() => {
                 // Move straight to the next item so a queue can be cleared without extra clicks.
@@ -221,6 +219,14 @@ function QueueRow({ item, active, onSelect }: { item: HumanRequired; active: boo
       </button>
     </li>
   );
+}
+
+/** The list only carries a 500-character preview of each draft; load the whole item when it's opened. */
+function FullDetail({ id, onBack, onDecided }: { id: string; onBack: () => void; onDecided: () => void }) {
+  const q = useQuery({ queryKey: ["hr", "item", id], queryFn: () => api.get<HumanRequired>(`/human-required/${id}`) });
+  if (q.isLoading) return <Skeleton rows={6} />;
+  if (q.error) return <ErrorNote error={q.error} />;
+  return <Detail key={`${id}-${q.data!.updated_at}`} item={q.data!} onBack={onBack} onDecided={onDecided} />;
 }
 
 function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () => void; onDecided: () => void }) {

@@ -14,7 +14,7 @@ const DIRECTION_LABEL: Record<string, string> = { read: "Read from", post: "Post
 
 export function TargetsTab({ clientId }: { clientId: string }) {
   const { isAdmin } = useSession();
-  const q = useQuery({ queryKey: ["targets", clientId], queryFn: () => api.get<Target[]>(`/clients/${clientId}/targets`) });
+  const q = useQuery({ queryKey: ["targets", clientId], queryFn: () => api.get<Target[]>(`/clients/${clientId}/targets`, { limit: 200 }) });
   const [editing, setEditing] = useState<Target | "new" | null>(null);
   const [deleting, setDeleting] = useState<Target | null>(null);
   const qc = useQueryClient();

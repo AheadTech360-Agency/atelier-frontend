@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { usePagedList } from "@/lib/paged";
 import { useScopedClient, useSession } from "@/lib/session";
 import { AGENTS, agentName, ago, humanize } from "@/lib/format";
 import { useClients } from "@/components/Shell";
-import { Button, Dialog, ErrorNote, Field, PageHeader, PriorityBadge, Select, Skeleton, TextField, Textarea, errorText, useToast } from "@/components/ui";
+import { Button, Dialog, ErrorNote, Field, LoadMore, PageHeader, PriorityBadge, Select, Skeleton, TextField, Textarea, errorText, useToast } from "@/components/ui";
 import type { Task } from "@/api-types/Task";
 
 const COLUMNS = [
@@ -22,11 +23,7 @@ export function TasksPage() {
   const [adding, setAdding] = useState(false);
   const qc = useQueryClient();
   const toast = useToast();
-  const q = useQuery({
-    queryKey: ["tasks", clientId, agent],
-    queryFn: () => api.get<Task[]>("/tasks", { client_id: clientId, to_agent: agent, limit: 500 }),
-    refetchInterval: 60_000,
-  });
+  const q = usePagedList<Task>(["tasks", clientId], "/tasks", { client_id: clientId, to_agent: agent }, 100);
   const move = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => api.patch(`/tasks/${id}`, { status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
@@ -62,9 +59,10 @@ export function TasksPage() {
       ) : q.error ? (
         <ErrorNote error={q.error} />
       ) : (
+        <>
         <div className="grid gap-4 overflow-x-auto p-4 md:grid-cols-2 md:p-6 xl:grid-cols-4">
           {COLUMNS.map((col) => {
-            const items = (q.data ?? []).filter((t) => t.status === col.id);
+            const items = q.items.filter((t) => t.status === col.id);
             return (
               <section key={col.id} className="flex min-w-0 flex-col rounded-lg bg-sunken">
                 <h2 className="flex items-center justify-between px-3 py-2 font-semibold">
@@ -104,6 +102,8 @@ export function TasksPage() {
             );
           })}
         </div>
+        <LoadMore hasMore={q.hasMore} loading={q.loadingMore} onClick={q.loadMore} />
+        </>
       )}
       {adding ? <AssignTask onClose={() => setAdding(false)} defaultClient={clientId} /> : null}
     </div>

@@ -2,9 +2,10 @@ import { useRef, useState, type DragEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImageOff, Trash2, Upload } from "lucide-react";
 import { api } from "@/lib/api";
+import { usePagedList } from "@/lib/paged";
 import { useSession } from "@/lib/session";
 import { agentName, bytes } from "@/lib/format";
-import { Badge, Button, ConfirmDelete, Dialog, EmptyState, ErrorNote, Field, IconButton, Input, Panel, Select, Skeleton, TextField, cx, errorText, useToast } from "../ui";
+import { Badge, Button, ConfirmDelete, Dialog, EmptyState, ErrorNote, Field, IconButton, Input, LoadMore, Panel, Select, Skeleton, TextField, cx, errorText, useToast } from "../ui";
 import type { Asset } from "@/api-types/Asset";
 import type { UploadTicket } from "@/api-types/UploadTicket";
 import type { SignedUrl } from "@/api-types/SignedUrl";
@@ -24,10 +25,7 @@ export function AssetsTab({ clientId }: { clientId: string }) {
   const [editing, setEditing] = useState<Asset | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const q = useQuery({
-    queryKey: ["assets", clientId, tag, search],
-    queryFn: () => api.get<Asset[]>(`/clients/${clientId}/assets`, { tag, search, limit: 200 }),
-  });
+  const q = usePagedList<Asset>(["assets", clientId], `/clients/${clientId}/assets`, { tag, search }, 40);
 
   async function uploadFiles(files: FileList | File[]) {
     const list = Array.from(files).filter((f) => ACCEPT.includes(f.type));
@@ -149,15 +147,16 @@ export function AssetsTab({ clientId }: { clientId: string }) {
           <Skeleton />
         ) : q.error ? (
           <ErrorNote error={q.error} />
-        ) : !q.data?.length ? (
+        ) : !q.items.length ? (
           <EmptyState title={tag || search ? "No images match" : "No images yet"} body={tag || search ? "Clear the search or tag filter." : "Upload store and product photos so the bots never have to guess."} />
         ) : (
           <ul className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-5">
-            {q.data.map((a) => (
+            {q.items.map((a) => (
               <AssetCard key={a.id} asset={a} onEdit={canReview ? () => setEditing(a) : undefined} />
             ))}
           </ul>
         )}
+        <LoadMore hasMore={q.hasMore} loading={q.loadingMore} onClick={q.loadMore} />
       </Panel>
       {editing ? <AssetDialog asset={editing} clientId={clientId} onClose={() => setEditing(null)} /> : null}
     </div>

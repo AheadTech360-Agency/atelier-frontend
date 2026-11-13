@@ -14,11 +14,7 @@ const ACTION_TYPES = [
   ["publish_blog_post", "Publish blog posts"],
   ["publish_pin", "Publish Pinterest pins"],
   ["syndicate_article", "Syndicate articles (Medium, LinkedIn, Substack)"],
-  ["update_meta_titles", "Update titles and meta descriptions"],
-  ["update_alt_text", "Update image alt text"],
-  ["add_internal_links", "Add internal links"],
   ["submit_directory_listing", "Submit directory listings"],
-  ["post_gbp_update", "Post Google Business Profile updates"],
 ] as const;
 
 export function BrandTab({ clientId }: { clientId: string }) {
@@ -132,7 +128,7 @@ export function BrandTab({ clientId }: { clientId: string }) {
           <div>
             <p className="text-[13px] font-medium">What bots may publish without asking</p>
             <p className="mb-2 text-[13px] text-ink-2">
-              Only applies to bots set to "Auto for low-risk" on the Bots tab. Pitches, review replies, robots.txt, redirects, generated images and spend always need a person.
+              Only applies to bots set to "Auto for low-risk" on the Bots tab. Everything else bots do on a live site or send to people, such as titles, alt text, links, copy, schema, pitches, review replies and Google Business Profile changes, always needs a person.
             </p>
             <ul className="divide-y divide-line rounded-md border border-line">
               {ACTION_TYPES.map(([id, label]) => (

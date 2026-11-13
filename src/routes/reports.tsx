@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import Markdown from "react-markdown";
 import { ArrowLeft, Printer } from "lucide-react";
 import { api } from "@/lib/api";
+import { usePagedList } from "@/lib/paged";
 import { useScopedClient } from "@/lib/session";
 import { agentName, ago, dateLabel, humanize } from "@/lib/format";
 import { useClients } from "@/components/Shell";
-import { Button, EmptyState, ErrorNote, PageHeader, Select, Skeleton, cx } from "@/components/ui";
+import { Button, EmptyState, ErrorNote, LoadMore, PageHeader, Select, Skeleton, cx } from "@/components/ui";
 import type { Report } from "@/api-types/Report";
 
 const TYPES = ["weekly_summary", "monthly_ai_visibility", "technical_audit", "prospect_audit", "other"];
@@ -16,10 +17,7 @@ export function ReportsPage() {
   const navigate = useNavigate({ from: "/reports" });
   const clientId = useScopedClient();
   const clients = useClients();
-  const list = useQuery({
-    queryKey: ["reports", clientId, type],
-    queryFn: () => api.get<Report[]>("/reports", { client_id: clientId, report_type: type, limit: 200 }),
-  });
+  const list = usePagedList<Report>(["reports", clientId], "/reports", { client_id: clientId, report_type: type });
   const report = useQuery({ queryKey: ["report", id], queryFn: () => api.get<Report>(`/reports/${id}`), enabled: !!id });
   const clientName = (cid: string) => clients.data?.find((c) => c.id === cid)?.name ?? "";
 
@@ -47,11 +45,11 @@ export function ReportsPage() {
             <Skeleton />
           ) : list.error ? (
             <ErrorNote error={list.error} />
-          ) : !list.data?.length ? (
+          ) : !list.items.length ? (
             <EmptyState title="No reports yet" body="Bots submit reports through MCP. The first weekly summary arrives after the SEO Lead's first weekly run." />
           ) : (
             <ul>
-              {list.data.map((r) => (
+              {list.items.map((r) => (
                 <li key={r.id}>
                   <button
                     onClick={() => navigate({ search: (s) => ({ ...s, id: r.id }) })}
@@ -67,6 +65,7 @@ export function ReportsPage() {
               ))}
             </ul>
           )}
+          <LoadMore hasMore={list.hasMore} loading={list.loadingMore} onClick={list.loadMore} />
         </div>
         <div className={cx("min-w-0 flex-1 overflow-y-auto bg-surface", !id && "max-md:hidden")}>
           {!id ? (

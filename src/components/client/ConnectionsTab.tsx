@@ -46,7 +46,7 @@ const platformLabel = (id: string) => PLATFORMS.find((p) => p.id === id)?.label 
 
 export function ConnectionsTab({ clientId }: { clientId: string }) {
   const { isAdmin } = useSession();
-  const q = useQuery({ queryKey: ["connections", clientId], queryFn: () => api.get<Connection[]>(`/clients/${clientId}/connections`) });
+  const q = useQuery({ queryKey: ["connections", clientId], queryFn: () => api.get<Connection[]>(`/clients/${clientId}/connections`, { limit: 200 }) });
   const [editing, setEditing] = useState<Connection | "new" | null>(null);
   const [deleting, setDeleting] = useState<Connection | null>(null);
   const qc = useQueryClient();
