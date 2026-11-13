@@ -24,22 +24,35 @@ import {
   errorText,
   useToast,
 } from "@/components/ui";
+import { AccountTab, NotificationsTab } from "@/components/settings/AccountTab";
 import type { TeamMember } from "@/api-types/TeamMember";
 import type { AgentKey } from "@/api-types/AgentKey";
 import type { CreatedAgentKey } from "@/api-types/CreatedAgentKey";
 import type { AuditEntry } from "@/api-types/AuditEntry";
 
 export function SettingsPage() {
-  const { tab = "team" } = useSearch({ from: "/settings" });
+  const { tab = "account" } = useSearch({ from: "/settings" });
   const navigate = useNavigate({ from: "/settings" });
   const { isAdmin } = useSession();
-  const tabs = [{ id: "team", label: "Team" }, ...(isAdmin ? [{ id: "keys", label: "Bot keys" }, { id: "audit", label: "Audit log" }] : [])];
+  const tabs = [
+    { id: "account", label: "My account" },
+    { id: "team", label: "Team" },
+    ...(isAdmin
+      ? [
+          { id: "notifications", label: "Notifications" },
+          { id: "keys", label: "Bot keys" },
+          { id: "audit", label: "Audit log" },
+        ]
+      : []),
+  ];
   return (
     <div>
       <PageHeader title="Settings" />
       <Tabs tabs={tabs} value={tab} onChange={(t) => navigate({ search: { tab: t } })} />
       <div className="p-4 md:p-6">
+        {tab === "account" && <AccountTab />}
         {tab === "team" && <TeamTab />}
+        {tab === "notifications" && isAdmin && <NotificationsTab />}
         {tab === "keys" && isAdmin && <KeysTab />}
         {tab === "audit" && isAdmin && <AuditTab />}
       </div>

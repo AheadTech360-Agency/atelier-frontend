@@ -16,13 +16,13 @@ The backend must be running on `VITE_API_URL`. There is no sign-up page: an admi
 
 | Route | What |
 |---|---|
-| `/` | Overview: what's waiting on the team, today's runs, client health |
+| `/` | Overview: what's waiting on the team, today's runs, client health, LLM usage per bot and client |
 | `/inbox` | Human Required: approve, edit and approve, send back, reject, resolve. `j` and `k` move through the queue |
 | `/clients/:id` | Per client: logins and APIs, sites, images, brand and claims, bot settings, findings, content, outreach |
-| `/bots` | Bot health, Rakazo webhook, Run now |
+| `/bots` | Bot health, Rakazo webhook, Run now, prospect reviews |
 | `/tasks` | Handoffs between bots, and tasks you assign |
 | `/reports` | Weekly summaries, AI visibility, audits. Save as PDF |
-| `/settings` | Team (admins create logins with a password and role), bot API keys, audit log |
+| `/settings` | My account (change your password), team, Slack notifications, bot API keys, audit log |
 
 ## Types
 

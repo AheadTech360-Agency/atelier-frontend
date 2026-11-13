@@ -6,6 +6,7 @@ import { useScopedClient, useSession } from "@/lib/session";
 import { agentName, ago } from "@/lib/format";
 import { useClients } from "@/components/Shell";
 import { Button, Dialog, ErrorNote, Field, PageHeader, Panel, Select, Skeleton, StatusBadge, TextField, errorText, useToast } from "@/components/ui";
+import { ProspectReviewButton, ProspectReviewsPanel } from "@/components/ProspectReviews";
 import type { Agent } from "@/api-types/Agent";
 import type { Run } from "@/api-types/Run";
 import type { Task } from "@/api-types/Task";
@@ -35,6 +36,7 @@ export function BotsPage() {
             .
           </>
         }
+        actions={<ProspectReviewButton />}
       />
       {agents.isLoading ? (
         <Skeleton rows={7} />
@@ -42,6 +44,9 @@ export function BotsPage() {
         <ErrorNote error={agents.error} />
       ) : (
         <div className="grid gap-4 p-4 md:p-6 lg:grid-cols-2">
+          <div className="lg:col-span-2">
+            <ProspectReviewsPanel />
+          </div>
           {agents.data!.map((a) => {
             const mine = (runs.data ?? []).filter((r) => r.agent_id === a.id);
             const last = mine[0];

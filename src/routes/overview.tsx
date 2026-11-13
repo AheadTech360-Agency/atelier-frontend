@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { ago, agentName } from "@/lib/format";
 import { cx, EmptyState, ErrorNote, PageHeader, Panel, PriorityBadge, Skeleton, StatusBadge } from "@/components/ui";
+import { UsagePanel } from "@/components/UsagePanel";
 import type { Overview } from "@/api-types/Overview";
 import type { HumanRequired } from "@/api-types/HumanRequired";
 import type { Run } from "@/api-types/Run";
@@ -146,6 +147,7 @@ export function OverviewPage() {
             </div>
           )}
         </Panel>
+        <UsagePanel />
       </div>
     </div>
   );
