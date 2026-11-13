@@ -2,17 +2,15 @@ import { useRef, useState, type DragEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImageOff, Trash2, Upload } from "lucide-react";
 import { api } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/session";
 import { agentName, bytes } from "@/lib/format";
-import { Badge, Button, ConfirmDelete, Dialog, EmptyState, ErrorNote, IconButton, Input, Panel, Select, Skeleton, TextField, cx, errorText, useToast } from "../ui";
+import { Badge, Button, ConfirmDelete, Dialog, EmptyState, ErrorNote, Field, IconButton, Input, Panel, Select, Skeleton, TextField, cx, errorText, useToast } from "../ui";
 import type { Asset } from "@/api-types/Asset";
 import type { UploadTicket } from "@/api-types/UploadTicket";
 import type { SignedUrl } from "@/api-types/SignedUrl";
 
 const ACCEPT = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/svg+xml"];
 const TAGS = ["product", "lifestyle", "store", "team", "decorative", "logo"];
-const BUCKET = "client-assets";
 
 export function AssetsTab({ clientId }: { clientId: string }) {
   const { canReview } = useSession();
@@ -46,10 +44,13 @@ export function AssetsTab({ clientId }: { clientId: string }) {
           size_bytes: file.size,
           tags: uploadTags,
         });
-        const { error } = await supabase.storage.from(BUCKET).uploadToSignedUrl(ticket.upload.path, ticket.upload.token, file, { contentType: file.type });
-        if (error) {
+        // Straight to Cloudflare R2 with the signed URL; the file never passes through our server.
+        const put = await fetch(ticket.upload.url, { method: "PUT", body: file, headers: { "Content-Type": file.type } }).catch(() => null);
+        if (!put || !put.ok) {
           await api.del(`/assets/${ticket.asset.id}`).catch(() => undefined);
-          throw error;
+          throw new Error(
+            put ? `R2 refused the upload (${put.status}). Check the bucket's CORS rules.` : "Couldn't reach R2. Check the bucket's CORS rules allow this site.",
+          );
         }
         setUploading((u) => u.map((x, j) => (j === i ? { ...x, done: true } : x)));
       } catch (e) {
@@ -84,7 +85,7 @@ export function AssetsTab({ clientId }: { clientId: string }) {
           <div className="flex-1">
             <p className="font-medium">Drop images here, or choose files</p>
             <p className="text-[13px] text-ink-2">
-              Bots use these first, then real Shopify product photos. Up to 25 MB each. Tag them so bots pick the right ones.
+              Stored in Cloudflare R2. Bots use these in articles first, then real Shopify product photos. Up to 25 MB each. Tag them so bots pick the right ones.
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Tags for new uploads">
               {TAGS.map((t) => {
@@ -200,6 +201,11 @@ function AssetDialog({ asset, clientId, onClose }: { asset: Asset; clientId: str
   const [tags, setTags] = useState(asset.tags.join(", "));
   const [product, setProduct] = useState(asset.shopify_product_id ?? "");
   const [confirm, setConfirm] = useState(false);
+  const url = useQuery({
+    queryKey: ["asset-url", asset.id],
+    queryFn: () => api.get<SignedUrl>(`/assets/${asset.id}/url`),
+    staleTime: 50 * 60_000,
+  });
 
   const save = useMutation({
     mutationFn: (approval_status?: string) =>
@@ -257,6 +263,24 @@ function AssetDialog({ asset, clientId, onClose }: { asset: Asset; clientId: str
         <TextField label="Alt text" hint="Describe what's in the image. Bots reuse this on the site." value={alt} onChange={(e) => setAlt(e.target.value)} />
         <TextField label="Tags" hint="Comma separated, e.g. product, lifestyle" value={tags} onChange={(e) => setTags(e.target.value)} />
         <TextField label="Shopify product ID" value={product} onChange={(e) => setProduct(e.target.value)} />
+        {url.data ? (
+          <Field label="Image URL" htmlFor="asset-url" hint={url.data.permanent ? "Permanent. Bots embed this URL in articles." : "Temporary, valid for an hour. Set R2_PUBLIC_BASE_URL on the backend for permanent URLs."}>
+            <div className="flex gap-2">
+              <Input id="asset-url" readOnly value={url.data.url} onFocus={(e) => e.target.select()} className="font-mono text-[12.5px]" />
+              <Button
+                type="button"
+                onClick={() =>
+                  navigator.clipboard.writeText(url.data!.url).then(
+                    () => toast("Image URL copied"),
+                    () => toast("Copy failed. Select the URL and copy it manually.", "error"),
+                  )
+                }
+              >
+                Copy URL
+              </Button>
+            </div>
+          </Field>
+        ) : null}
       </div>
       <ConfirmDelete
         open={confirm}
