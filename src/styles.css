@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+/* Tokens. Cool workroom grays, one denim accent, priority colors that carry meaning.
+   UI type: Schibsted Grotesk. Bot drafts: Newsreader, so drafts read like proofs to sign off. */
+@theme {
+  --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-proof: "Newsreader", ui-serif, Georgia, serif;
+
+  --color-canvas: #f3f4f6;
+  --color-surface: #ffffff;
+  --color-sunken: #eceef2;
+  --color-line: #dde0e6;
+  --color-line-strong: #c4c9d2;
+  --color-ink: #161a22;
+  --color-ink-2: #4a5160;
+  --color-ink-3: #7a8191;
+
+  --color-denim: #33449a;
+  --color-denim-strong: #26357e;
+  --color-denim-soft: #e6e9f6;
+
+  --color-p1: #b42f25;
+  --color-p1-soft: #f8e5e3;
+  --color-p2: #a8640c;
+  --color-p2-soft: #f7ecdc;
+  --color-p3: #4f5868;
+  --color-p3-soft: #e9ebef;
+  --color-p4: #8b919c;
+  --color-p4-soft: #f0f1f3;
+
+  --color-ok: #2f7a4b;
+  --color-ok-soft: #e2f1e7;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --color-canvas: #12151b;
+      --color-surface: #1a1e26;
+      --color-sunken: #151820;
+      --color-line: #2a303b;
+      --color-line-strong: #3a414e;
+      --color-ink: #e8eaee;
+      --color-ink-2: #b2b8c4;
+      --color-ink-3: #848b99;
+      --color-denim: #8d9cf0;
+      --color-denim-strong: #a9b5f5;
+      --color-denim-soft: #232b4d;
+      --color-p1: #f08a80;
+      --color-p1-soft: #3a1f1d;
+      --color-p2: #e3a95a;
+      --color-p2-soft: #36291a;
+      --color-p3: #aab2c0;
+      --color-p3-soft: #262b35;
+      --color-p4: #858c98;
+      --color-p4-soft: #20242c;
+      --color-ok: #7cc797;
+      --color-ok-soft: #1c3226;
+    }
+  }
+
+  html,
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-denim);
+    outline-offset: 2px;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  dialog::backdrop {
+    background: rgb(10 12 18 / 0.45);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0ms !important;
+      animation-duration: 0ms !important;
+    }
+  }
+}
+
+/* Sign-in panel: a 2/1 denim twill, built from two diagonal line sets over indigo. */
+@layer components {
+  .twill {
+    background-color: #2b3a86;
+    background-image:
+      repeating-linear-gradient(-58deg, rgb(255 255 255 / 0.055) 0 1px, transparent 1px 5px),
+      repeating-linear-gradient(32deg, rgb(10 16 48 / 0.18) 0 1px, transparent 1px 9px),
+      radial-gradient(120% 90% at 20% 0%, #3a4ca6 0%, #24316f 70%);
+  }
+  .stamp {
+    transform: rotate(-6deg);
+    animation: stamp 520ms cubic-bezier(0.2, 0.9, 0.3, 1.2) 450ms both;
+  }
+  @keyframes stamp {
+    from {
+      opacity: 0;
+      transform: rotate(-6deg) scale(1.6);
+    }
+    to {
+      opacity: 1;
+      transform: rotate(-6deg) scale(1);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stamp {
+      animation: none;
+    }
+  }
+}
+
+/* Proof: how bot drafts render. Reading measure, serif, generous leading. */
+@layer components {
+  .proof {
+    font-family: var(--font-proof);
+    font-size: 17px;
+    line-height: 1.62;
+    color: var(--color-ink);
+    max-width: 68ch;
+  }
+  .proof h1,
+  .proof h2,
+  .proof h3 {
+    font-weight: 500;
+    line-height: 1.25;
+    margin: 1.2em 0 0.4em;
+  }
+  .proof h1 {
+    font-size: 1.55em;
+  }
+  .proof h2 {
+    font-size: 1.3em;
+  }
+  .proof h3 {
+    font-size: 1.1em;
+  }
+  .proof p,
+  .proof ul,
+  .proof ol {
+    margin: 0 0 0.85em;
+  }
+  .proof ul {
+    list-style: disc;
+    padding-left: 1.3em;
+  }
+  .proof ol {
+    list-style: decimal;
+    padding-left: 1.3em;
+  }
+  .proof a {
+    color: var(--color-denim);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .proof code {
+    font-family: ui-monospace, monospace;
+    font-size: 0.85em;
+    background: var(--color-sunken);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+  }
+  .proof blockquote {
+    border-left: 2px solid var(--color-line-strong);
+    padding-left: 1em;
+    color: var(--color-ink-2);
+  }
+}
