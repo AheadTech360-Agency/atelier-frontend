@@ -1,7 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
 import { Shell } from "./components/Shell";
 import { useSession } from "./lib/session";
-import { LoginPage, NotOnTeam } from "./routes/login";
+import { LoginPage, NotOnTeam, ServerUnreachable } from "./routes/login";
 import { OverviewPage } from "./routes/overview";
 import { InboxPage } from "./routes/inbox";
 import { ClientsPage } from "./routes/clients";
@@ -13,9 +13,10 @@ import { SettingsPage } from "./routes/settings";
 import { Skeleton } from "./components/ui";
 
 function Root() {
-  const { session, loading, role } = useSession();
+  const { session, loading, role, meError } = useSession();
   if (loading) return <Skeleton rows={6} />;
   if (!session) return <LoginPage />;
+  if (meError) return <ServerUnreachable />;
   if (!role) return <NotOnTeam />;
   return (
     <Shell>

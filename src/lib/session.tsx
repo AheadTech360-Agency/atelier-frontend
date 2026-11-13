@@ -8,6 +8,9 @@ import type { Me } from "@/api-types/Me";
 type Ctx = {
   session: Session | null;
   loading: boolean;
+  /** Signed in, but the backend couldn't be reached or failed. Not the same as "no role". */
+  meError: unknown;
+  retryMe: () => void;
   me: Me | undefined;
   role: string | null;
   isAdmin: boolean;
@@ -61,6 +64,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       value={{
         session,
         loading: loading || (!!session && me.isLoading),
+        meError: me.error,
+        retryMe: () => void me.refetch(),
         me: me.data,
         role,
         isAdmin: role === "admin",

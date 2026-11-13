@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/session";
+import { ApiError } from "@/lib/api";
 import { Button, PriorityBadge, TextField } from "@/components/ui";
 
 const BOTS = ["SEO Lead", "Technical Auditor", "On-Page", "Content Writer", "Off-Page", "AI Search", "Local SEO"];
@@ -95,6 +96,42 @@ function Showcase() {
           <li key={b}>{b}</li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+export function ServerUnreachable() {
+  const { meError, retryMe } = useSession();
+  const api = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://127.0.0.1:8080/api/v1";
+  const status = meError instanceof ApiError ? meError.status : null;
+  return (
+    <div className="grid min-h-dvh lg:grid-cols-[1.15fr_1fr]">
+      <Showcase />
+      <div className="flex flex-col justify-center bg-surface px-6 py-12 sm:px-12">
+        <div className="mx-auto w-full max-w-sm">
+          <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.02em]">
+            {status ? "The server had a problem loading your account" : "Can't reach the Atelier server"}
+          </h1>
+          <p className="mt-3 text-ink-2">
+            {status ? (
+              <>The server answered with an error ({status}). Check the backend terminal for details, then try again.</>
+            ) : (
+              <>
+                You're signed in, but the backend at <code className="rounded bg-sunken px-1 text-[13px]">{api}</code> isn't answering. Start it with{" "}
+                <code className="rounded bg-sunken px-1 text-[13px]">cargo run -p seo-server</code> in atelier-backend, then try again.
+              </>
+            )}
+          </p>
+          <div className="mt-6 flex gap-2">
+            <Button variant="primary" onClick={retryMe}>
+              Try again
+            </Button>
+            <Button variant="ghost" onClick={() => supabase.auth.signOut()}>
+              Sign out
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
