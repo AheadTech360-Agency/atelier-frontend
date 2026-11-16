@@ -31,6 +31,7 @@ import { AccountTab, NotificationsTab } from "@/components/settings/AccountTab";
 import type { TeamMember } from "@/api-types/TeamMember";
 import type { AgentKey } from "@/api-types/AgentKey";
 import type { CreatedAgentKey } from "@/api-types/CreatedAgentKey";
+import type { KeyClientsInput } from "@/api-types/KeyClientsInput";
 import type { AuditEntry } from "@/api-types/AuditEntry";
 
 export function SettingsPage() {
@@ -278,6 +279,8 @@ function KeysTab() {
   const q = useQuery({ queryKey: ["keys"], queryFn: () => api.get<AgentKey[]>("/agent-keys", { limit: 200 }) });
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<CreatedAgentKey | null>(null);
+  const [editing, setEditing] = useState<AgentKey | null>(null);
+  const { isAdmin } = useSession();
   const revoke = useMutation({
     mutationFn: (id: string) => api.post(`/agent-keys/${id}/revoke`),
     onSuccess: () => {
@@ -291,8 +294,8 @@ function KeysTab() {
   return (
     <Panel title="Bot API keys" actions={<Button size="sm" variant="primary" onClick={() => setCreating(true)}>Create key</Button>}>
       <p className="border-b border-line px-4 py-2.5 text-[13px] text-ink-2">
-        Give each bot its own key. In Rakazo, add this server under Integrations as an HTTPS MCP server and send the key as{" "}
-        <code className="rounded bg-sunken px-1">Authorization: Bearer &lt;key&gt;</code>.
+        Create one team key and add Atelier to Rakazo once, under Integrations, as an HTTPS MCP server with the key as a Bearer
+        token. Every bot uses it and names itself on each call. Change a key's clients here at any time; the key stays the same.
       </p>
       {q.isLoading ? (
         <Skeleton />
@@ -306,12 +309,17 @@ function KeysTab() {
             <li key={k.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="font-medium">
-                  {agentName(k.agent_id)} {k.label ? <span className="font-normal text-ink-2">{k.label}</span> : null}
+                  {keyOwner(k.agent_id)} {k.label ? <span className="font-normal text-ink-2">{k.label}</span> : null}
                 </p>
                 <p className="text-[12.5px] text-ink-3">
                   <code>{k.key_prefix}…</code>, {clientNames(k.client_ids)}, last used {ago(k.last_used_at)}
                 </p>
               </div>
+              {!k.revoked_at && isAdmin ? (
+                <Button size="sm" onClick={() => setEditing(k)}>
+                  Clients
+                </Button>
+              ) : null}
               {k.revoked_at ? (
                 <Badge tone="p1">Revoked {ago(k.revoked_at)}</Badge>
               ) : (
@@ -322,7 +330,7 @@ function KeysTab() {
               <DeleteButton
                 path={`/agent-keys/${k.id}`}
                 thing="bot key"
-                name={`${agentName(k.agent_id)} ${k.key_prefix}`}
+                name={`${keyOwner(k.agent_id)} ${k.key_prefix}`}
                 consequence={k.revoked_at ? "It disappears from this list." : "The bot using it is disconnected at once."}
                 invalidate={["keys"]}
               />
@@ -341,18 +349,82 @@ function KeysTab() {
         />
       ) : null}
       {created ? <ShowKey created={created} onClose={() => setCreated(null)} /> : null}
+      {editing ? <EditKeyClients k={editing} onClose={() => setEditing(null)} /> : null}
     </Panel>
   );
 }
 
-function CreateKey({ onClose, onCreated }: { onClose: () => void; onCreated: (k: CreatedAgentKey) => void }) {
+/** A team key (no bot) works for every bot; each call names the bot. */
+function keyOwner(agentId: string | null): string {
+  return agentId ? agentName(agentId) : "All bots (team key)";
+}
+
+/** Tick the clients a key may work on. None ticked means every client. */
+function ClientChecklist({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) {
   const clients = useClients();
+  return (
+    <fieldset>
+      <legend className="text-[13px] font-medium">Clients</legend>
+      <p className="mb-1.5 text-[12.5px] text-ink-3">Leave all unticked to allow every client, including ones you add later.</p>
+      <div className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
+        {clients.data?.map((c) => (
+          <label key={c.id} className="flex items-center gap-2 text-[13px]">
+            <input
+              type="checkbox"
+              checked={value.includes(c.id)}
+              onChange={(e) => onChange(e.target.checked ? [...value, c.id] : value.filter((x) => x !== c.id))}
+              className="size-4 accent-[var(--color-denim)]"
+            />
+            {c.name}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function EditKeyClients({ k, onClose }: { k: AgentKey; onClose: () => void }) {
+  const qc = useQueryClient();
   const toast = useToast();
-  const [agent, setAgent] = useState("seo_lead");
+  const [scope, setScope] = useState<string[]>(k.client_ids ?? []);
+  const save = useMutation({
+    mutationFn: () => api.patch<AgentKey>(`/agent-keys/${k.id}`, { client_ids: scope.length ? scope : null } satisfies KeyClientsInput),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["keys"] });
+      toast("Clients updated. The key stays the same.");
+      onClose();
+    },
+    onError: (e) => toast(errorText(e), "error"),
+  });
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={`Clients for ${keyOwner(k.agent_id)} ${k.key_prefix}`}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" busy={save.isPending} onClick={() => save.mutate()}>
+            Save clients
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-3 text-ink-2">Change which clients this key can work on. Nothing changes in Rakazo: the key stays the same.</p>
+      <ClientChecklist value={scope} onChange={setScope} />
+    </Dialog>
+  );
+}
+
+function CreateKey({ onClose, onCreated }: { onClose: () => void; onCreated: (k: CreatedAgentKey) => void }) {
+  const toast = useToast();
+  const [agent, setAgent] = useState("");
   const [label, setLabel] = useState("Rakazo");
   const [scope, setScope] = useState<string[]>([]);
   const create = useMutation({
-    mutationFn: () => api.post<CreatedAgentKey>("/agent-keys", { agent_id: agent, label, client_ids: scope.length ? scope : null }),
+    mutationFn: () => api.post<CreatedAgentKey>("/agent-keys", { agent_id: agent || null, label, client_ids: scope.length ? scope : null }),
     onSuccess: onCreated,
     onError: (e) => toast(errorText(e), "error"),
   });
@@ -375,6 +447,7 @@ function CreateKey({ onClose, onCreated }: { onClose: () => void; onCreated: (k:
       <div className="flex flex-col gap-3">
         <Field label="Bot" htmlFor="key-bot">
           <Select id="key-bot" value={agent} onChange={(e) => setAgent(e.target.value)}>
+            <option value="">All bots (one key for Rakazo)</option>
             {AGENTS.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -382,24 +455,11 @@ function CreateKey({ onClose, onCreated }: { onClose: () => void; onCreated: (k:
             ))}
           </Select>
         </Field>
+        <p className="-mt-1.5 text-[12.5px] text-ink-3">
+          {agent ? "Only this bot can use the key." : "Add Atelier to Rakazo once with this key. Each bot names itself on every call."}
+        </p>
         <TextField label="Label" value={label} onChange={(e) => setLabel(e.target.value)} hint="Where this key is used, e.g. Rakazo production" />
-        <fieldset>
-          <legend className="text-[13px] font-medium">Clients</legend>
-          <p className="mb-1.5 text-[12.5px] text-ink-3">Leave all unticked to allow every client.</p>
-          <div className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
-            {clients.data?.map((c) => (
-              <label key={c.id} className="flex items-center gap-2 text-[13px]">
-                <input
-                  type="checkbox"
-                  checked={scope.includes(c.id)}
-                  onChange={(e) => setScope(e.target.checked ? [...scope, c.id] : scope.filter((x) => x !== c.id))}
-                  className="size-4 accent-[var(--color-denim)]"
-                />
-                {c.name}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <ClientChecklist value={scope} onChange={setScope} />
       </div>
     </Dialog>
   );
@@ -408,8 +468,8 @@ function CreateKey({ onClose, onCreated }: { onClose: () => void; onCreated: (k:
 function ShowKey({ created, onClose }: { created: CreatedAgentKey; onClose: () => void }) {
   const toast = useToast();
   return (
-    <Dialog open onClose={onClose} title={`Key for ${agentName(created.key.agent_id)}`} footer={<Button variant="primary" onClick={onClose}>I've stored the key</Button>}>
-      <p className="mb-3 text-ink-2">Copy it into the bot's MCP integration in Rakazo now. It won't be shown again; if it's lost, revoke it and create a new one.</p>
+    <Dialog open onClose={onClose} title={`Key for ${keyOwner(created.key.agent_id)}`} footer={<Button variant="primary" onClick={onClose}>I've stored the key</Button>}>
+      <p className="mb-3 text-ink-2">Copy it into the Atelier integration in Rakazo now. It won't be shown again; if it's lost, revoke it and create a new one.</p>
       <div className="flex items-center gap-2 rounded-md border border-line bg-sunken p-2">
         <code className="min-w-0 flex-1 break-all text-[13px]">{created.secret}</code>
         <Button
