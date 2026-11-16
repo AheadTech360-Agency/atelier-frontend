@@ -185,4 +185,43 @@
     padding-left: 1em;
     color: var(--color-ink-2);
   }
+  /* Before and after tables and report tables: compact sans text, scrolls sideways on phones. */
+  .proof table {
+    display: block;
+    overflow-x: auto;
+    border-collapse: collapse;
+    margin: 0 0 1em;
+    font-family: var(--font-sans, inherit);
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+  .proof th,
+  .proof td {
+    border: 1px solid var(--color-line);
+    padding: 0.4em 0.65em;
+    text-align: left;
+    vertical-align: top;
+  }
+  .proof th {
+    background: var(--color-sunken);
+    font-weight: 500;
+  }
+  .proof del {
+    color: var(--color-ink-3);
+  }
+  /* Code diffs in change previews. */
+  .proof pre {
+    overflow-x: auto;
+    margin: 0 0 1em;
+    padding: 0.75em 1em;
+    border-radius: 6px;
+    background: var(--color-sunken);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .proof pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+  }
 }

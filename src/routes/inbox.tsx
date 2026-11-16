@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/lib/paged";
@@ -10,6 +11,7 @@ import { useScopedClient, useSession } from "@/lib/session";
 import { AGENTS, agentName, ago, daysOpen, humanize, phrase } from "@/lib/format";
 import { useClients } from "@/components/Shell";
 import { DeleteButton } from "@/components/DeleteButton";
+import { ChangePanel, useChangeForItem } from "@/components/ChangePanel";
 import {
   Button,
   cx,
@@ -151,7 +153,7 @@ export function InboxPage() {
 
       <div className="flex min-h-0 flex-1">
         {/* Queue */}
-        <div className={cx("min-h-0 w-full overflow-y-auto border-r border-line md:w-[380px] md:shrink-0", selected && "max-md:hidden")}>
+        <div className={cx("min-h-0 w-full overflow-y-auto border-r border-line md:w-[380px] md:shrink-0", (selected || search.item) && "max-md:hidden")}>
           {list.isLoading ? (
             <Skeleton rows={8} />
           ) : list.error ? (
@@ -172,17 +174,18 @@ export function InboxPage() {
         </div>
 
         {/* Detail */}
-        <div className={cx("min-h-0 flex-1 overflow-y-auto bg-surface", !selected && "max-md:hidden")}>
-          {selected ? (
+        <div className={cx("min-h-0 flex-1 overflow-y-auto bg-surface", !(selected || search.item) && "max-md:hidden")}>
+          {selected || search.item ? (
             <FullDetail
-              key={selected.id}
-              id={selected.id}
+              key={selected?.id ?? search.item}
+              id={selected?.id ?? search.item!}
               onBack={() => setSearch({ item: undefined })}
               onDecided={() => {
                 // Move straight to the next item so a queue can be cleared without extra clicks.
-                const idx = items.findIndex((i) => i.id === selected.id);
-                const next = items[idx + 1] ?? items[idx - 1];
-                setSearch({ item: next && next.id !== selected.id ? next.id : undefined });
+                const current = selected?.id ?? search.item;
+                const idx = items.findIndex((i) => i.id === current);
+                const next = idx >= 0 ? (items[idx + 1] ?? items[idx - 1]) : undefined;
+                setSearch({ item: next && next.id !== current ? next.id : undefined });
               }}
             />
           ) : (
@@ -242,17 +245,22 @@ function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () =
   const [note, setNote] = useState(item.reviewer_note ?? "");
   const edited = draft.trim() !== (item.draft ?? "").trim() && draft.trim() !== "";
   const decidable = canReview && (item.status === "open" || item.status === "needs_changes" || !item.acted_on_at);
+  // A planned site change: Atelier applies it on approval, exactly as shown (no draft edits).
+  const change = useChangeForItem(item.id).data ?? null;
+  const changeOpen = change?.status === "proposed";
 
   const decide = useMutation({
     mutationFn: (d: DecisionInput) => api.post<HumanRequired>(`/human-required/${item.id}/decision`, d),
     onSuccess: (_r, d) => {
+      const applying = change ? (change.kind === "github" ? "Approved. Atelier is opening the pull request." : "Approved. Atelier is applying it now.") : null;
       const verb: Record<string, string> = {
-        approved: edited ? "Approved with your edits" : "Approved",
+        approved: applying ?? (edited ? "Approved with your edits" : "Approved"),
         rejected: "Rejected",
         needs_changes: "Sent back for changes",
         resolved: "Marked resolved",
       };
-      toast(`${verb[d.decision]}. The bot picks it up on its next run.`);
+      toast(change && d.decision === "approved" ? verb.approved : `${verb[d.decision]}. The bot picks it up on its next run.`);
+      qc.invalidateQueries({ queryKey: ["actions"] });
       onDecided();
       qc.invalidateQueries({ queryKey: ["hr"] });
       qc.invalidateQueries({ queryKey: ["overview"] });
@@ -261,7 +269,7 @@ function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () =
   });
 
   const send = (decision: string) =>
-    decide.mutate({ decision, note: note.trim() || null, edited_draft: decision === "approved" && edited ? draft : null });
+    decide.mutate({ decision, note: note.trim() || null, edited_draft: decision === "approved" && edited && !change ? draft : null });
 
   const needsNote = !note.trim();
   const isApproval = !!item.draft;
@@ -321,11 +329,17 @@ function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () =
           </a>
         ) : null}
 
+        {change ? (
+          <div className="mt-5 max-w-[70ch]">
+            <ChangePanel action={change} />
+          </div>
+        ) : null}
+
         {isApproval ? (
           <section className="mt-6">
             <div className="mb-2 flex max-w-[68ch] items-center justify-between">
-              <h3 className="font-semibold">{item.edited_draft ? "Draft (with reviewer edits)" : "Draft"}</h3>
-              {decidable ? (
+              <h3 className="font-semibold">{change ? "The change" : item.edited_draft ? "Draft (with reviewer edits)" : "Draft"}</h3>
+              {decidable && !change ? (
                 <Button size="sm" variant="ghost" onClick={() => setEditing((v) => !v)}>
                   {editing ? "Preview" : "Edit draft"}
                 </Button>
@@ -340,7 +354,7 @@ function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () =
               />
             ) : (
               <div className="proof rounded-md border border-line bg-canvas/40 px-5 py-4">
-                <Markdown>{draft || "_Empty draft_"}</Markdown>
+                <Markdown remarkPlugins={[remarkGfm]}>{draft || "_Empty draft_"}</Markdown>
               </div>
             )}
             {edited ? <p className="mt-1.5 text-[12.5px] text-p2">You changed the draft. Approving sends your version to the bot.</p> : null}
@@ -370,7 +384,7 @@ function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () =
           />
           <div className="mt-2.5 flex flex-wrap gap-2">
             <Button variant="approve" busy={decide.isPending && decide.variables?.decision === "approved"} onClick={() => send("approved")}>
-              {edited ? "Approve with my edits" : "Approve"}
+              {changeOpen ? (change?.kind === "github" ? "Approve and open pull request" : "Approve and apply") : edited ? "Approve with my edits" : "Approve"}
             </Button>
             <Button disabled={needsNote} title={needsNote ? "Add a note first" : undefined} onClick={() => send("needs_changes")}>
               Send back for changes

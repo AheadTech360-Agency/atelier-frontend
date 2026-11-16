@@ -13,11 +13,13 @@ import { AssetsTab } from "@/components/client/AssetsTab";
 import { BrandTab } from "@/components/client/BrandTab";
 import { BotsTab } from "@/components/client/BotsTab";
 import { ContentTab, FindingsTab, OutreachTab } from "@/components/client/WorkTabs";
+import { CodeTab } from "@/components/client/CodeTab";
 import type { Client } from "@/api-types/Client";
 
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "connections", label: "Logins & APIs" },
+  { id: "code", label: "Code & CMS" },
   { id: "targets", label: "Sites" },
   { id: "assets", label: "Images" },
   { id: "brand", label: "Brand & claims" },
@@ -76,6 +78,7 @@ export function ClientPage() {
       <div className="p-4 md:p-6">
         {tab === "overview" && <ClientOverviewTab clientId={clientId} />}
         {tab === "connections" && <ConnectionsTab clientId={clientId} />}
+        {tab === "code" && <CodeTab clientId={clientId} />}
         {tab === "targets" && <TargetsTab clientId={clientId} />}
         {tab === "assets" && <AssetsTab clientId={clientId} />}
         {tab === "brand" && <BrandTab clientId={clientId} />}

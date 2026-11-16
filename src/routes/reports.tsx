@@ -1,6 +1,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ArrowLeft, Printer } from "lucide-react";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/lib/paged";
@@ -100,7 +101,7 @@ export function ReportsPage() {
               </p>
               <h1 className="mt-1 mb-4 text-[24px] font-semibold tracking-[-0.01em]">{report.data!.title}</h1>
               <div className="proof">
-                <Markdown>{report.data!.body_markdown}</Markdown>
+                <Markdown remarkPlugins={[remarkGfm]}>{report.data!.body_markdown}</Markdown>
               </div>
             </article>
           )}
