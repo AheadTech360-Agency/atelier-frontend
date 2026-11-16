@@ -5,8 +5,9 @@ import { ArrowLeft, Printer } from "lucide-react";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/lib/paged";
 import { useScopedClient } from "@/lib/session";
-import { agentName, ago, dateLabel, humanize } from "@/lib/format";
+import { agentName, ago, dateLabel, humanize, phrase } from "@/lib/format";
 import { useClients } from "@/components/Shell";
+import { DeleteButton } from "@/components/DeleteButton";
 import { Button, EmptyState, ErrorNote, LoadMore, PageHeader, Select, Skeleton, cx } from "@/components/ui";
 import type { Report } from "@/api-types/Report";
 
@@ -58,7 +59,7 @@ export function ReportsPage() {
                   >
                     <span className="block truncate font-medium">{r.title}</span>
                     <span className="text-[12.5px] text-ink-3">
-                      {clientName(r.client_id)}, {humanize(r.report_type).toLowerCase()}, {ago(r.created_at)}
+                      {clientName(r.client_id)}, {phrase(r.report_type)}, {ago(r.created_at)}
                     </span>
                   </button>
                 </li>
@@ -83,9 +84,18 @@ export function ReportsPage() {
                 <Button size="sm" className="ml-auto" onClick={() => window.print()}>
                   <Printer size={14} /> Save as PDF
                 </Button>
+                <DeleteButton
+                  labelled
+                  path={`/reports/${report.data!.id}`}
+                  thing="report"
+                  name={report.data!.title}
+                  consequence="The SEO Lead can't use it in later summaries."
+                  invalidate={["reports"]}
+                  onDeleted={() => navigate({ search: (s) => ({ ...s, id: undefined }) })}
+                />
               </div>
               <p className="text-[13px] text-ink-3">
-                {clientName(report.data!.client_id)}, {humanize(report.data!.report_type).toLowerCase()} from {agentName(report.data!.agent_id)}
+                {clientName(report.data!.client_id)}, {phrase(report.data!.report_type)} from {agentName(report.data!.agent_id)}
                 {report.data!.period_start ? `, ${dateLabel(report.data!.period_start)} to ${dateLabel(report.data!.period_end)}` : ""}
               </p>
               <h1 className="mt-1 mb-4 text-[24px] font-semibold tracking-[-0.01em]">{report.data!.title}</h1>

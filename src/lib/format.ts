@@ -38,10 +38,27 @@ export function dateLabel(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// Words that stay upper case when a snake_case value is shown as text.
+const ACRONYMS = new Set(["ai", "seo", "gbp", "url", "urls", "ctr", "cwv", "lcp", "cls", "inp", "faq", "gsc", "ga4", "api", "pr", "oos", "nap"]);
+
 export function humanize(s: string | null | undefined): string {
   if (!s) return "";
-  const t = s.replace(/_/g, " ");
+  const t = s
+    .replace(/_/g, " ")
+    .split(" ")
+    .map((w) => (ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w))
+    .join(" ");
   return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** Like humanize, but lower case for use mid-sentence ("weekly summary", "monthly AI visibility"). */
+export function phrase(s: string | null | undefined): string {
+  if (!s) return "";
+  return s
+    .replace(/_/g, " ")
+    .split(" ")
+    .map((w) => (ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.toLowerCase()))
+    .join(" ");
 }
 
 export function bytes(n: number): string {

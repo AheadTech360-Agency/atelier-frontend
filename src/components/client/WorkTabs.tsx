@@ -6,6 +6,7 @@ import { usePagedList } from "@/lib/paged";
 import { useSession } from "@/lib/session";
 import { agentName, ago, dateLabel, humanize } from "@/lib/format";
 import { Badge, EmptyState, ErrorNote, LoadMore, Panel, Select, Skeleton, StatusBadge, cx, errorText, useToast } from "../ui";
+import { DeleteButton } from "../DeleteButton";
 import type { Finding } from "@/api-types/Finding";
 import type { ContentItem } from "@/api-types/ContentItem";
 import type { Outreach } from "@/api-types/Outreach";
@@ -101,6 +102,13 @@ export function FindingsTab({ clientId }: { clientId: string }) {
               ) : (
                 <StatusBadge s={f.status} />
               )}
+              <DeleteButton
+                path={`/findings/${f.id}`}
+                thing="finding"
+                name={f.title}
+                consequence="If the problem is still there, the next audit records it again."
+                invalidate={["findings", "overview"]}
+              />
             </li>
           ))}
         </ul>
@@ -158,6 +166,17 @@ export function ContentTab({ clientId }: { clientId: string }) {
                     </a>
                   ) : null}
                   <ContentBody id={c.id} hasBody={!!c.body} />
+                  <div className="mt-3 flex justify-end">
+                    <DeleteButton
+                      labelled
+                      path={`/content/${c.id}`}
+                      thing="content item"
+                      name={c.title}
+                      consequence="It leaves the content calendar. A live post on the site is not touched."
+                      invalidate={["content"]}
+                      onDeleted={() => setOpen(null)}
+                    />
+                  </div>
                 </div>
               ) : null}
             </li>
@@ -181,6 +200,7 @@ function ContentBody({ id, hasBody }: { id: string; hasBody: boolean }) {
 const PIPELINE = ["prospect", "qualified", "pitch_drafted", "pitch_approved", "sent", "follow_up", "replied", "won", "lost"];
 
 export function OutreachTab({ clientId }: { clientId: string }) {
+  const { isAdmin } = useSession();
   const [status, setStatus] = useState("");
   const q = usePagedList<Outreach>(["outreach", clientId], "/outreach", { client_id: clientId, status });
   // Counted in the database, so no rows are downloaded just to count them.
@@ -225,6 +245,7 @@ export function OutreachTab({ clientId }: { clientId: string }) {
                   <th className="px-4 py-2 text-right font-medium">Score</th>
                   <th className="px-4 py-2 font-medium">Stage</th>
                   <th className="px-4 py-2 font-medium">Follow up</th>
+                  {isAdmin ? <th className="w-10 px-2 py-2"><span className="sr-only">Delete</span></th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -242,6 +263,17 @@ export function OutreachTab({ clientId }: { clientId: string }) {
                     <td className={cx("px-4 text-[13px]", o.follow_up_on && new Date(o.follow_up_on) <= new Date() ? "font-medium text-p2" : "text-ink-2")}>
                       {o.follow_up_on ? dateLabel(o.follow_up_on) : ""}
                     </td>
+                    {isAdmin ? (
+                      <td className="px-2">
+                        <DeleteButton
+                          path={`/outreach/${o.id}`}
+                          thing="outreach item"
+                          name={o.domain}
+                          consequence="Its pitch and follow-up dates go too. Emails already sent are not affected."
+                          invalidate={["outreach"]}
+                        />
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

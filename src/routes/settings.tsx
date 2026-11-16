@@ -7,6 +7,7 @@ import { usePagedList } from "@/lib/paged";
 import { useSession } from "@/lib/session";
 import { AGENTS, agentName, ago, humanize } from "@/lib/format";
 import { useClients } from "@/components/Shell";
+import { DeleteButton } from "@/components/DeleteButton";
 import {
   Badge,
   Button,
@@ -318,6 +319,13 @@ function KeysTab() {
                   Revoke {k.key_prefix}
                 </Button>
               )}
+              <DeleteButton
+                path={`/agent-keys/${k.id}`}
+                thing="bot key"
+                name={`${agentName(k.agent_id)} ${k.key_prefix}`}
+                consequence={k.revoked_at ? "It disappears from this list." : "The bot using it is disconnected at once."}
+                invalidate={["keys"]}
+              />
             </li>
           ))}
         </ul>
@@ -415,10 +423,43 @@ function ShowKey({ created, onClose }: { created: CreatedAgentKey; onClose: () =
   );
 }
 
+const AUDIT_ACTION: Record<string, string> = {
+  "account.password_changed": "Changed their password",
+  "agent.trigger": "Started a bot run",
+  "agent_key.create": "Bot key created",
+  "agent_key.revoke": "Bot key revoked",
+  "agent_key.delete": "Bot key deleted",
+  "client.delete": "Client deleted",
+  "credential.read": "Login read by bot",
+  "credential.set": "Login saved",
+  "human_required.decide": "Decision made",
+  "human_required.delete": "Inbox item deleted",
+  "task.delete": "Task deleted",
+  "finding.delete": "Finding deleted",
+  "content_item.delete": "Content item deleted",
+  "outreach.delete": "Outreach item deleted",
+  "report.delete": "Report deleted",
+  "prospect.requested": "Prospect review requested",
+  "publish.check": "Publish check",
+};
+
+function auditName(detail: unknown): string {
+  if (detail && typeof detail === "object" && "name" in detail && typeof (detail as { name: unknown }).name === "string") {
+    return (detail as { name: string }).name;
+  }
+  return "";
+}
+
 function AuditTab() {
   const clients = useClients();
+  const team = useQuery({ queryKey: ["team"], queryFn: () => api.get<TeamMember[]>("/team", { limit: 200 }) });
   const q = usePagedList<AuditEntry>(["audit"], "/audit-log", {}, 50);
   const clientName = (id: string | null) => (id ? (clients.data?.find((c) => c.id === id)?.name ?? "") : "");
+  const who = (e: AuditEntry) => {
+    if (e.actor_type === "agent") return agentName(e.actor_id);
+    if (e.actor_type === "user") return team.data?.find((m) => m.user_id === e.actor_id)?.email ?? "Former team member";
+    return "System";
+  };
   return (
     <Panel title="Audit log">
       {q.isLoading ? (
@@ -444,8 +485,11 @@ function AuditTab() {
                   <td className="px-4 py-2 whitespace-nowrap text-ink-2" title={e.created_at}>
                     {ago(e.created_at)}
                   </td>
-                  <td className="px-4 py-2">{e.actor_type === "agent" ? agentName(e.actor_id) : e.actor_type === "user" ? "Team member" : "System"}</td>
-                  <td className="px-4 py-2">{humanize(e.action.replace(".", " "))}</td>
+                  <td className="px-4 py-2">{who(e)}</td>
+                  <td className="px-4 py-2">
+                    {AUDIT_ACTION[e.action] ?? humanize(e.action.replace(/[._]/g, " "))}
+                    {auditName(e.detail) ? <span className="text-ink-3">: {auditName(e.detail)}</span> : null}
+                  </td>
                   <td className="px-4 py-2 text-ink-2">{clientName(e.client_id)}</td>
                 </tr>
               ))}

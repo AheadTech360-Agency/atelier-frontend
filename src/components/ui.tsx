@@ -363,6 +363,7 @@ export function ConfirmDelete({
   consequence,
   onConfirm,
   busy,
+  typeToConfirm,
 }: {
   open: boolean;
   onClose: () => void;
@@ -371,7 +372,12 @@ export function ConfirmDelete({
   consequence: string;
   onConfirm: () => void;
   busy?: boolean;
+  /** For big deletes: the person must type this exact text before the button works. */
+  typeToConfirm?: string;
 }) {
+  const [typed, setTyped] = useState("");
+  const typeId = useId();
+  const blocked = !!typeToConfirm && typed.trim() !== typeToConfirm.trim();
   return (
     <Dialog
       open={open}
@@ -382,7 +388,7 @@ export function ConfirmDelete({
           <Button variant="ghost" onClick={onClose}>
             Keep {thing}
           </Button>
-          <Button variant="danger" busy={busy} onClick={onConfirm}>
+          <Button variant="danger" busy={busy} disabled={blocked} onClick={onConfirm}>
             Delete {name}
           </Button>
         </>
@@ -391,6 +397,11 @@ export function ConfirmDelete({
       <p className="text-ink-2">
         <span className="font-medium text-ink">{name}</span> will be removed. {consequence}
       </p>
+      {typeToConfirm ? (
+        <Field label={`Type ${typeToConfirm} to confirm`} htmlFor={typeId}>
+          <Input id={typeId} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" spellCheck={false} />
+        </Field>
+      ) : null}
     </Dialog>
   );
 }

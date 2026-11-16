@@ -3,8 +3,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/lib/paged";
 import { useScopedClient, useSession } from "@/lib/session";
-import { AGENTS, agentName, ago, humanize } from "@/lib/format";
+import { AGENTS, agentName, ago, humanize, phrase } from "@/lib/format";
 import { useClients } from "@/components/Shell";
+import { DeleteButton } from "@/components/DeleteButton";
 import { Button, Dialog, ErrorNote, Field, LoadMore, PageHeader, PriorityBadge, Select, Skeleton, TextField, Textarea, errorText, useToast } from "@/components/ui";
 import type { Task } from "@/api-types/Task";
 
@@ -75,11 +76,18 @@ export function TasksPage() {
                     <li key={t.id} className="rounded-md border border-line bg-surface p-3">
                       <div className="flex items-center gap-2">
                         <PriorityBadge p={t.priority} />
-                        <span className="truncate text-[12.5px] text-ink-3">{clientName(t.client_id)}</span>
+                        <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-3">{clientName(t.client_id)}</span>
+                        <DeleteButton
+                          path={`/tasks/${t.id}`}
+                          thing="task"
+                          name={t.title}
+                          consequence="The bot it was handed to won't see it again."
+                          invalidate={["tasks", "overview", "agents"]}
+                        />
                       </div>
                       <p className="mt-1.5 font-medium">{t.title}</p>
                       <p className="mt-1 text-[12.5px] text-ink-2">
-                        {agentName(t.from_agent, true)} to {agentName(t.to_agent, true)}, {humanize(t.task_type).toLowerCase()}, {ago(t.created_at)}
+                        {agentName(t.from_agent, true)} to {agentName(t.to_agent, true)}, {phrase(t.task_type)}, {ago(t.created_at)}
                       </p>
                       {canReview ? (
                         <Select

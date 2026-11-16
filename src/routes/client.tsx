@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button, ErrorNote, PageHeader, Skeleton, StatusBadge, Tabs } from "@/components/ui";
 import { ClientDialog } from "./clients";
+import { DeleteButton } from "@/components/DeleteButton";
 import { ClientOverviewTab } from "@/components/client/OverviewTab";
 import { ConnectionsTab } from "@/components/client/ConnectionsTab";
 import { TargetsTab } from "@/components/client/TargetsTab";
@@ -30,7 +31,7 @@ export function ClientPage() {
   const { clientId } = useParams({ from: "/clients/$clientId" });
   const { tab = "overview" } = useSearch({ from: "/clients/$clientId" });
   const navigate = useNavigate({ from: "/clients/$clientId" });
-  const { isAdmin } = useSession();
+  const { isAdmin, clientScope, setClientScope } = useSession();
   const [editing, setEditing] = useState(false);
   const client = useQuery({ queryKey: ["client", clientId], queryFn: () => api.get<Client>(`/clients/${clientId}`) });
 
@@ -50,7 +51,26 @@ export function ClientPage() {
             <StatusBadge s={c.status} />
           </span>
         }
-        actions={isAdmin ? <Button onClick={() => setEditing(true)}>Edit client</Button> : null}
+        actions={
+          isAdmin ? (
+            <>
+              <Button onClick={() => setEditing(true)}>Edit client</Button>
+              <DeleteButton
+                labelled
+                path={`/clients/${c.id}`}
+                thing="client"
+                name={c.name}
+                typeToConfirm={c.name}
+                consequence="Everything for this client goes with it: logins and their saved passwords, sites, images, rules, bot settings, inbox items, tasks, findings, metrics, content, outreach and reports. This can't be undone."
+                invalidate={["clients", "overview", "hr", "tasks", "reports", "agents"]}
+                onDeleted={() => {
+                  if (clientScope === c.id) setClientScope("all");
+                  navigate({ to: "/clients" });
+                }}
+              />
+            </>
+          ) : null
+        }
       />
       <Tabs tabs={TABS} value={tab} onChange={(t) => navigate({ search: { tab: t } })} />
       <div className="p-4 md:p-6">

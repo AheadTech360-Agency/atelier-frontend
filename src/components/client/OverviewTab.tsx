@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/lib/api";
-import { agentName, ago, dateLabel, humanize } from "@/lib/format";
+import { agentName, ago, dateLabel, humanize, phrase } from "@/lib/format";
 import { EmptyState, Panel, Select, Skeleton, StatusBadge } from "../ui";
 import type { MetricName } from "@/api-types/MetricName";
 import type { MetricPoint } from "@/api-types/MetricPoint";
@@ -46,7 +46,7 @@ export function ClientOverviewTab({ clientId }: { clientId: string }) {
             <Select aria-label="Metric" value={selected} onChange={(e) => setPick(e.target.value)} className="h-8 w-auto">
               {names.data.map((n) => (
                 <option key={`${n.source}|${n.metric}`} value={`${n.source}|${n.metric}`}>
-                  {n.source.toUpperCase()} {humanize(n.metric).toLowerCase()}
+                  {n.source.toUpperCase()} {phrase(n.metric)}
                 </option>
               ))}
             </Select>

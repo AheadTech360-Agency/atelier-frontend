@@ -7,8 +7,9 @@ import { api } from "@/lib/api";
 import { usePagedList } from "@/lib/paged";
 import { supabase } from "@/lib/supabase";
 import { useScopedClient, useSession } from "@/lib/session";
-import { AGENTS, agentName, ago, daysOpen, humanize } from "@/lib/format";
+import { AGENTS, agentName, ago, daysOpen, humanize, phrase } from "@/lib/format";
 import { useClients } from "@/components/Shell";
+import { DeleteButton } from "@/components/DeleteButton";
 import {
   Button,
   cx,
@@ -157,7 +158,7 @@ export function InboxPage() {
             <ErrorNote error={list.error} />
           ) : items.length === 0 ? (
             <EmptyState
-              title={status === "open" ? "Nothing waiting on you" : `No ${humanize(status).toLowerCase()} items`}
+              title={status === "open" ? "Nothing waiting on you" : `No ${phrase(status)} items`}
               body={status === "open" ? "When a bot needs an approval or gets stuck, it shows up here." : "Try another status or clear the filters."}
             />
           ) : (
@@ -286,6 +287,17 @@ function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () =
           <PriorityBadge p={item.priority} />
           <StatusBadge s={item.status} />
           {item.acted_on_at ? <span className="text-[12.5px] text-ink-3">Bot acted {ago(item.acted_on_at)}</span> : null}
+          <span className="ml-auto">
+            <DeleteButton
+              labelled
+              path={`/human-required/${item.id}`}
+              thing="item"
+              name={item.issue}
+              consequence="The bot won't see a decision for it. It stays in the audit log."
+              invalidate={["hr", "overview"]}
+              onDeleted={onDecided}
+            />
+          </span>
         </div>
         <h2 className="mt-2 max-w-[70ch] text-[19px] leading-snug font-semibold">{item.issue}</h2>
 
