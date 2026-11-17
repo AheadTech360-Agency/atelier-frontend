@@ -44,8 +44,34 @@
   :root {
     color-scheme: light;
   }
+  /* Dark: chosen in the sidebar, or following the system when set to System. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-canvas: #0f1416;
+    --color-surface: #171c1f;
+    --color-sunken: #1c2226;
+    --color-active: #252c30;
+    --color-line: #262d31;
+    --color-line-strong: #3a4246;
+    --color-ink: #e8ecee;
+    --color-ink-2: #b4bcc0;
+    --color-ink-3: #939ca1;
+    --color-denim: #6cbccf;
+    --color-denim-strong: #8fd0df;
+    --color-denim-soft: #17343c;
+    --color-p1: #f08a80;
+    --color-p1-soft: #3a1f1d;
+    --color-p2: #e3a95a;
+    --color-p2-soft: #36291a;
+    --color-p3: #c3cacd;
+    --color-p3-soft: #262c30;
+    --color-p4: #9aa3a8;
+    --color-p4-soft: #20262a;
+    --color-ok: #7cc797;
+    --color-ok-soft: #1c3226;
+  }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
       color-scheme: dark;
       --color-canvas: #0f1416;
       --color-surface: #171c1f;

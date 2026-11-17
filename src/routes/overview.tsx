@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { AGENTS, ago, agentName, groupOf, plain } from "@/lib/format";
+import { AGENTS, ago, agentName, plain } from "@/lib/format";
 import { usePageTitle } from "@/lib/title";
 import { cx, ErrorNote, PageHeader, Panel, PriorityBadge, Skeleton } from "@/components/ui";
 import { UsagePanel } from "@/components/UsagePanel";
@@ -78,7 +78,7 @@ export function OverviewPage() {
             <ul className="pb-1">
               {urgent.data.map((i) => (
                 <li key={i.id}>
-                  <Link to="/inbox" search={{ view: groupOf(i.category), item: i.id }} className="flex h-11 items-center gap-3 px-4 hover:bg-sunken">
+                  <Link to="/inbox" search={{ item: i.id }} className="flex h-11 items-center gap-3 px-4 hover:bg-sunken">
                     <PriorityBadge p={i.priority} />
                     <span className="min-w-0 flex-1 truncate">{plain(i.issue)}</span>
                     <span className="shrink-0 text-[13px] text-ink-3">{agentName(i.agent_id, true)}</span>

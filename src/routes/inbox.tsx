@@ -57,7 +57,7 @@ const HISTORY = [
   { id: "resolved", label: "Done or answered" },
 ];
 
-type View = InboxGroup | "history";
+type View = InboxGroup | "all" | "history";
 
 /** Live updates: any change to Human Required refreshes the lists. */
 function useHumanRequiredRealtime() {
@@ -102,13 +102,13 @@ export function InboxPage() {
   const search = useSearch({ from: "/inbox" });
   const navigate = useNavigate({ from: "/inbox" });
   const clientId = useScopedClient();
-  const { counts, loaded } = useGroupCounts(clientId);
+  const { counts } = useGroupCounts(clientId);
   const setSearch = (patch: Partial<InboxSearch>) => navigate({ search: (s) => ({ ...s, ...patch }) });
 
   // Old links used ?status=: anything other than open means history.
   const legacyHistory = search.status && search.status !== "open" && !search.view;
-  const firstBusy = (INBOX_GROUPS.find((g) => counts[g.id] > 0)?.id ?? "decide") as View;
-  const view: View = (search.view as View) ?? (legacyHistory ? "history" : loaded ? firstBusy : "decide");
+  // Everything open by default; the other tabs narrow it to one kind of work.
+  const view: View = (search.view as View) ?? (legacyHistory ? "history" : "all");
   const group = INBOX_GROUPS.find((g) => g.id === view);
 
   const list = usePagedList<HumanRequired>(["hr"], "/human-required", {
@@ -144,6 +144,7 @@ export function InboxPage() {
   });
 
   const tabs: { id: View; label: string; count?: number }[] = [
+    { id: "all", label: "All", count: counts.decide + counts.unblock + counts.answer },
     ...INBOX_GROUPS.map((g) => ({ id: g.id as View, label: g.label, count: counts[g.id] })),
     { id: "history", label: "History" },
   ];
@@ -239,13 +240,15 @@ export function InboxPage() {
             <ErrorNote error={list.error} />
           ) : items.length === 0 ? (
             <EmptyState
-              title={group ? "All clear" : "Nothing decided yet"}
+              title={view === "history" ? "Nothing decided yet" : "All clear"}
               body={
                 search.agent || search.priority || search.stale
                   ? "Nothing matches these filters. Clear them to see everything."
                   : group
                     ? group.empty
-                    : "Items you've decided show up here."
+                    : view === "all"
+                      ? "Nothing is waiting on you. When a bot needs an approval, gets stuck or has a question, it shows up here."
+                      : "Items you've decided show up here."
               }
             />
           ) : (

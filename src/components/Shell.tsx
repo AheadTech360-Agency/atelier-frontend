@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, ClipboardList, FileText, Inbox, LayoutGrid, LogOut, Menu, Settings, Store, X } from "lucide-react";
+import { Bot, ClipboardList, FileText, Inbox, LayoutGrid, LogOut, Menu, Monitor, Moon, Settings, Store, Sun, X } from "lucide-react";
+import { useTheme, type Theme } from "@/lib/theme";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/session";
@@ -89,6 +90,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const account = (
     <div className="mt-auto px-5 py-4">
+      <ThemeSwitch />
       <p className="truncate text-[13px]" title={me?.email ?? ""}>
         {me?.email}
       </p>
@@ -156,6 +158,37 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
         <main className="min-w-0 flex-1 bg-surface md:rounded-[var(--radius-sheet)] md:border md:border-line">{children}</main>
       </div>
+    </div>
+  );
+}
+
+const THEMES: { id: Theme; label: string; icon: typeof Sun }[] = [
+  { id: "system", label: "System", icon: Monitor },
+  { id: "light", label: "Light", icon: Sun },
+  { id: "dark", label: "Dark", icon: Moon },
+];
+
+/** System, Light or Dark. Remembered in this browser. */
+function ThemeSwitch() {
+  const [theme, setTheme] = useTheme();
+  return (
+    <div role="radiogroup" aria-label="Theme" className="mb-3 flex rounded-md bg-active p-0.5">
+      {THEMES.map(({ id, label, icon: Icon }) => (
+        <button
+          key={id}
+          role="radio"
+          aria-checked={theme === id}
+          title={label}
+          onClick={() => setTheme(id)}
+          className={cx(
+            "flex h-7 flex-1 items-center justify-center gap-1.5 rounded-[5px] text-[12px]",
+            theme === id ? "bg-surface font-medium text-ink" : "text-ink-3 hover:text-ink",
+          )}
+        >
+          <Icon size={13} aria-hidden />
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
