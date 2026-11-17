@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Session } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "./supabase";
-import { api } from "./api";
+import { api, DEMO } from "./api";
 import type { Me } from "@/api-types/Me";
 
 type Ctx = {
@@ -35,6 +35,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [clientScope, setScope] = useState(readScope);
 
   useEffect(() => {
+    if (DEMO) {
+      setSession({ access_token: "demo", user: { id: "demo" } } as Session);
+      setLoading(false);
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);

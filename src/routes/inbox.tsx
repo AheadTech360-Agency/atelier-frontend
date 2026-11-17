@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, DEMO } from "@/lib/api";
 import { usePagedList } from "@/lib/paged";
 import { supabase } from "@/lib/supabase";
 import { useScopedClient, useSession } from "@/lib/session";
@@ -32,7 +32,6 @@ import {
   EmptyState,
   ErrorNote,
   LoadMore,
-  PageHeader,
   PriorityBadge,
   Select,
   Skeleton,
@@ -64,6 +63,7 @@ type View = InboxGroup | "history";
 function useHumanRequiredRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
+    if (DEMO) return;
     // A bot often posts several items in a row: refresh once, two seconds after the last one.
     let timer: number | undefined;
     const ch = supabase
@@ -149,10 +149,16 @@ export function InboxPage() {
   ];
 
   return (
-    <div className="flex h-[calc(100dvh-48px)] flex-col">
-      <div className={cx(open && "max-md:hidden")}>
-        <PageHeader title="Human Required" description="What the bots need from a person. They act on your answer at the start of their next run." />
-        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2 md:px-6">
+    <div className="flex h-[calc(100dvh-48px)] flex-col md:h-[calc(100dvh-58px)]">
+      {/* One title: full size over the list, compact while an item fills a narrower screen. */}
+      <header className={cx("px-5 md:px-6", open ? "pt-4 pb-1 lg:pt-6 lg:pb-4" : "pt-6 pb-4")}>
+        <h1 className={cx("leading-tight font-semibold tracking-[-0.01em]", open ? "text-[16px] lg:text-[22px]" : "text-[22px]")}>Human Required</h1>
+        <p className={cx("mt-1 max-w-[70ch] text-ink-3", open && "max-lg:hidden")}>
+          What the bots need from a person. They act on your answer at the start of their next run.
+        </p>
+      </header>
+      <div className={cx(open && "max-lg:hidden")}>
+        <div className="flex flex-wrap items-end gap-2 border-b border-line px-5 md:px-6">
           <div role="tablist" aria-label="Inbox" className="flex flex-wrap gap-1">
             {tabs.map((t) => (
               <button
@@ -161,20 +167,16 @@ export function InboxPage() {
                 aria-selected={view === t.id}
                 onClick={() => setSearch({ view: t.id, status: undefined, item: undefined, stale: undefined })}
                 className={cx(
-                  "inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px]",
-                  view === t.id ? "bg-ink text-surface" : "text-ink-2 hover:bg-sunken",
+                  "-mb-px inline-flex h-10 items-center gap-1.5 border-b-2 px-2.5",
+                  view === t.id ? "border-ink font-medium text-ink" : "border-transparent text-ink-3 hover:text-ink",
                 )}
               >
                 {t.label}
-                {t.count ? (
-                  <span className={cx("tabular rounded-sm px-1 text-[12px] font-semibold", view === t.id ? "bg-surface/20" : "bg-denim text-white")}>
-                    {t.count}
-                  </span>
-                ) : null}
+                {t.count ? <span className="tabular text-[12.5px] text-ink-3">{t.count}</span> : null}
               </button>
             ))}
           </div>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-2 py-2">
             {view === "history" ? (
               <Select
                 aria-label="Decision"
@@ -230,7 +232,7 @@ export function InboxPage() {
 
       <div className="flex min-h-0 flex-1">
         {/* Queue */}
-        <div className={cx("min-h-0 w-full overflow-y-auto border-r border-line md:w-[380px] md:shrink-0", open && "max-md:hidden")}>
+        <div className={cx("min-h-0 w-full overflow-y-auto border-r border-line lg:w-[384px] lg:shrink-0", open && "max-lg:hidden")}>
           {list.isLoading ? (
             <Skeleton rows={8} />
           ) : list.error ? (
@@ -263,7 +265,7 @@ export function InboxPage() {
         </div>
 
         {/* Detail */}
-        <div className={cx("min-h-0 flex-1 overflow-y-auto bg-surface", !open && "max-md:hidden")}>
+        <div className={cx("min-h-0 flex-1 overflow-y-auto", !open && "max-lg:hidden")}>
           {open ? (
             <FullDetail
               key={selected?.id ?? search.item}
@@ -301,8 +303,8 @@ function QueueRow({ item, active, showType, onSelect }: { item: HumanRequired; a
         aria-current={active || undefined}
         aria-label={`${item.priority.toUpperCase()}, ${type}, ${client?.name ?? "client"}, ${agentName(item.agent_id, true)}: ${title.slice(0, 110)}. ${when}`}
         className={cx(
-          "flex w-full flex-col gap-1 border-b border-line px-4 py-3 text-left md:px-5",
-          active ? "bg-denim-soft" : "hover:bg-sunken",
+          "flex w-full flex-col gap-1 border-b border-line px-5 py-3 text-left",
+          active ? "bg-active" : "hover:bg-sunken",
         )}
       >
         <div className="flex items-center gap-2">
@@ -441,13 +443,13 @@ function Detail({
 
   return (
     <article className="flex min-h-full flex-col" aria-labelledby={`hr-${item.id}`}>
-      <div className="flex-1 px-4 py-5 md:px-8">
-        <button onClick={onBack} className="mb-3 inline-flex h-8 items-center gap-1 text-[13px] text-ink-2 md:hidden">
+      <div className="flex-1 px-5 py-6 md:px-8">
+        <button onClick={onBack} className="mb-3 inline-flex h-8 items-center gap-1 text-[13px] text-ink-2 lg:hidden">
           <ArrowLeft size={14} /> Back to list
         </button>
         <div className="flex flex-wrap items-center gap-2">
           <PriorityBadge p={item.priority} />
-          <StatusBadge s={item.status} />
+          {item.status !== "open" ? <StatusBadge s={item.status} /> : null}
           {item.acted_on_at ? <span className="text-[12.5px] text-ink-3">Bot acted {ago(item.acted_on_at)}</span> : null}
         </div>
         <h2 id={`hr-${item.id}`} ref={heading} tabIndex={-1} className="mt-2 max-w-[70ch] text-[19px] leading-snug font-semibold focus:outline-none">
@@ -463,8 +465,8 @@ function Detail({
           ))}
         </dl>
 
-        <section className="mt-5 max-w-[70ch] rounded-md bg-denim-soft px-4 py-3">
-          <h3 className="text-[13px] font-medium text-denim">{askTitle}</h3>
+        <section className="mt-5 max-w-[70ch] rounded-lg bg-sunken px-4 py-3">
+          <h3 className="text-[13px] font-medium text-ink-3">{askTitle}</h3>
           <p className="mt-1 text-[15px] whitespace-pre-wrap">{plain(item.ask)}</p>
         </section>
 
@@ -539,7 +541,7 @@ function Detail({
       </div>
 
       {decidable ? (
-        <div className="sticky bottom-0 border-t border-line bg-surface px-4 py-3 md:px-8">
+        <div className="sticky bottom-0 border-t border-line bg-surface px-5 py-3 md:px-8">
           <label htmlFor="hr-note" className={footer === "answer" ? "mb-1 block text-[13px] font-medium" : "sr-only"}>
             {footer === "answer" ? "Your answer to the bot" : "Note to the bot"}
           </label>
@@ -686,7 +688,7 @@ function VersionHistory({ item }: { item: HumanRequired }) {
                     aria-pressed={shown?.version === v.version}
                     className={cx(
                       "h-8 rounded-md border px-2.5 text-[13px]",
-                      shown?.version === v.version ? "border-denim bg-denim-soft text-denim" : "border-line text-ink-2 hover:bg-sunken",
+                      shown?.version === v.version ? "border-ink bg-active text-ink" : "border-line text-ink-2 hover:bg-sunken",
                     )}
                   >
                     Version {v.version}

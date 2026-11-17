@@ -39,9 +39,9 @@ export const Button = forwardRef<HTMLButtonElement, BtnProps>(function Button(
       className={cx(
         "inline-flex items-center justify-center gap-1.5 rounded-md font-medium whitespace-nowrap transition-colors",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        size === "sm" ? "h-7 px-2.5 text-[13px]" : "h-9 px-3.5",
-        variant === "primary" && "bg-denim text-white hover:bg-denim-strong",
-        variant === "approve" && "bg-ok text-white hover:brightness-110",
+        size === "sm" ? "h-7 px-2.5 text-[13px]" : "h-8 px-3",
+        // One dark primary per screen; the brand hue stays on data and the mark.
+        (variant === "primary" || variant === "approve") && "bg-ink text-surface hover:bg-ink/85",
         variant === "secondary" && "border border-line-strong bg-surface text-ink hover:bg-sunken",
         variant === "ghost" && "text-ink-2 hover:bg-sunken hover:text-ink",
         variant === "danger" && "border border-p1/40 bg-surface text-p1 hover:bg-p1-soft",
@@ -216,10 +216,10 @@ export function StatusBadge({ s }: { s: string }) {
 
 export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-4 pt-5 pb-4 md:px-6">
+    <header className="flex flex-wrap items-end justify-between gap-3 px-5 pt-6 pb-4 md:px-6">
       <div className="min-w-0">
-        <h1 className="text-[22px] font-semibold tracking-[-0.01em]">{title}</h1>
-        {description ? <p className="mt-0.5 max-w-[70ch] text-ink-2">{description}</p> : null}
+        <h1 className="text-[22px] leading-tight font-semibold tracking-[-0.01em]">{title}</h1>
+        {description ? <p className="mt-1 max-w-[70ch] text-ink-3">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
@@ -230,8 +230,8 @@ export function Panel({ title, actions, children, className }: { title?: string;
   return (
     <section className={cx("rounded-lg border border-line bg-surface", className)}>
       {title || actions ? (
-        <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2.5">
-          {title ? <h2 className="font-semibold">{title}</h2> : <span />}
+        <div className="flex min-h-11 items-center justify-between gap-2 px-4 pt-3 pb-1">
+          {title ? <h2 className="text-[15px] font-semibold">{title}</h2> : <span />}
           {actions}
         </div>
       ) : null}
@@ -242,7 +242,7 @@ export function Panel({ title, actions, children, className }: { title?: string;
 
 export function EmptyState({ title, body, action }: { title: string; body?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-start gap-2 px-4 py-10 md:px-6">
+    <div className="flex flex-col items-start gap-2 px-5 py-10 md:px-6">
       <p className="font-semibold">{title}</p>
       {body ? <p className="max-w-[60ch] text-ink-2">{body}</p> : null}
       {action ? <div className="mt-1">{action}</div> : null}
@@ -285,7 +285,7 @@ export function LoadMore({ hasMore, loading, onClick }: { hasMore: boolean; load
 
 export function Tabs({ tabs, value, onChange }: { tabs: { id: string; label: string; count?: number }[]; value: string; onChange: (id: string) => void }) {
   return (
-    <div role="tablist" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line px-4 md:px-6">
+    <div role="tablist" className="flex flex-wrap gap-x-1 border-b border-line px-5 sm:flex-nowrap sm:overflow-x-auto sm:overflow-y-hidden md:px-6">
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -294,13 +294,15 @@ export function Tabs({ tabs, value, onChange }: { tabs: { id: string; label: str
           onClick={() => onChange(t.id)}
           className={cx(
             "-mb-px flex h-10 items-center gap-1.5 border-b-2 px-2.5 whitespace-nowrap",
-            value === t.id ? "border-denim font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink",
+            value === t.id ? "border-ink font-medium text-ink" : "border-transparent text-ink-3 hover:text-ink",
           )}
         >
           {t.label}
           {t.count ? <span className="tabular text-[12px] text-ink-3">{t.count}</span> : null}
         </button>
       ))}
+      {/* Keeps the last tab off the screen edge when the row scrolls on a phone. */}
+      <span aria-hidden className="w-4 shrink-0" />
     </div>
   );
 }

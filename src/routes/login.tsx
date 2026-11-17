@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/session";
 import { ApiError } from "@/lib/api";
 import { Button, PriorityBadge, TextField } from "@/components/ui";
+import { Mark } from "@/components/Shell";
 
 const BOTS = ["SEO Lead", "Technical Auditor", "On-Page", "Content Writer", "Off-Page", "AI Search", "Local SEO"];
 
@@ -29,7 +30,7 @@ export function LoginPage() {
 
       <div className="flex flex-col justify-center bg-surface px-6 py-12 sm:px-12">
         <form onSubmit={submit} className="mx-auto w-full max-w-sm">
-          <p className="text-[13px] font-medium text-denim">AheadTech360</p>
+          <div className="flex items-center gap-2"><Mark /><p className="text-[13px] font-medium text-ink-2">AheadTech360</p></div>
           <h1 className="mt-1 text-[28px] leading-tight font-semibold tracking-[-0.02em]">Sign in to Atelier</h1>
           <p className="mt-2 mb-7 text-ink-2">Review what the bots drafted, unblock them, and keep every client's accounts in one place.</p>
           <div className="flex flex-col gap-4">
@@ -51,7 +52,7 @@ export function LoginPage() {
   );
 }
 
-/** Left panel: denim twill with the review queue the team works in. Decorative, hidden from screen readers. */
+/** Left panel: a flat teal field with the review queue the team works in. Decorative, hidden from screen readers. */
 function Showcase() {
   return (
     <div aria-hidden className="twill relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between">
@@ -63,14 +64,14 @@ function Showcase() {
 
       <div className="relative z-10 mx-12 my-10 h-[312px]">
         {/* Back cards */}
-        <div className="absolute inset-x-12 top-0 rotate-[-1.5deg] rounded-lg bg-[#dfe3f1] px-5 pt-3.5 pb-10 shadow-[0_18px_40px_-20px_rgb(0_0_0/0.6)]">
+        <div className="absolute inset-x-12 top-0 rotate-[-1.5deg] rounded-lg bg-[#c9dde2] px-5 pt-3.5 pb-10">
           <div className="flex items-center gap-2">
             <PriorityBadge p="p1" />
             <span className="text-[13px] text-ink-2">Local SEO</span>
           </div>
           <p className="mt-1.5 font-medium text-ink">Google Business Profile needs a verification code</p>
         </div>
-        <div className="absolute inset-x-6 top-[74px] rotate-[1deg] rounded-lg bg-[#eef0f7] px-5 pt-3.5 pb-10 shadow-[0_18px_40px_-20px_rgb(0_0_0/0.6)]">
+        <div className="absolute inset-x-6 top-[74px] rotate-[1deg] rounded-lg bg-[#e3eff2] px-5 pt-3.5 pb-10">
           <div className="flex items-center gap-2">
             <PriorityBadge p="p3" />
             <span className="text-[13px] text-ink-2">Off-Page</span>
@@ -78,7 +79,7 @@ function Showcase() {
           <p className="mt-1.5 font-medium text-ink">Pitch ready for a home and style editor</p>
         </div>
         {/* Front card: a draft, set like a proof */}
-        <div className="absolute inset-x-0 top-[148px] rounded-lg bg-white px-6 py-5 shadow-[0_24px_60px_-24px_rgb(0_0_0/0.7)]">
+        <div className="absolute inset-x-0 top-[148px] rounded-lg bg-white px-6 py-5">
           <div className="flex items-center gap-2">
             <PriorityBadge p="p2" />
             <span className="text-[13px] text-ink-2">Content Writer, blog post</span>

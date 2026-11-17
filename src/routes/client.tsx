@@ -102,7 +102,7 @@ export function ClientPage() {
                   aria-current={setup === x.id ? "page" : undefined}
                   className={cx(
                     "flex h-9 shrink-0 items-center rounded-md px-2.5 whitespace-nowrap",
-                    setup === x.id ? "bg-denim-soft font-medium text-denim" : "text-ink-2 hover:bg-sunken hover:text-ink",
+                    setup === x.id ? "bg-active font-medium text-ink" : "text-ink-2 hover:bg-sunken hover:text-ink",
                   )}
                 >
                   {x.label}

@@ -18,7 +18,7 @@ export function AgentPicker({ value, onChange, label }: { value: string[]; onCha
               onClick={() => toggle(a.id)}
               className={cx(
                 "h-7 rounded-md border px-2 text-[13px]",
-                on ? "border-denim bg-denim-soft text-denim" : "border-line-strong text-ink-2 hover:bg-sunken",
+                on ? "border-ink bg-active text-ink" : "border-line-strong text-ink-2 hover:bg-sunken",
               )}
             >
               {a.short}

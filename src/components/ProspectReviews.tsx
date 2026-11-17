@@ -157,7 +157,7 @@ function ProspectDialog({ id, onClose }: { id: string; onClose: () => void }) {
             , {STATUS_LABEL[p!.status].toLowerCase()}
             {p!.notes ? `. Notes: ${p!.notes}` : ""}
           </p>
-          {p!.summary ? <p className="rounded-md border-l-[3px] border-denim bg-denim-soft px-3 py-2">{p!.summary}</p> : null}
+          {p!.summary ? <p className="rounded-lg bg-sunken px-3 py-2">{p!.summary}</p> : null}
           {p!.report_markdown ? (
             <div className="proof">
               <Markdown>{p!.report_markdown}</Markdown>

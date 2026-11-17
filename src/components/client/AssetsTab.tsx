@@ -94,7 +94,7 @@ export function AssetsTab({ clientId }: { clientId: string }) {
                     type="button"
                     aria-pressed={on}
                     onClick={() => setUploadTags(on ? uploadTags.filter((x) => x !== t) : [...uploadTags, t])}
-                    className={cx("h-7 rounded-md border px-2 text-[13px] capitalize", on ? "border-denim bg-denim-soft text-denim" : "border-line-strong text-ink-2")}
+                    className={cx("h-7 rounded-md border px-2 text-[13px] capitalize", on ? "border-ink bg-active text-ink" : "border-line-strong text-ink-2")}
                   >
                     {t}
                   </button>
