@@ -31,7 +31,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const overview = useQuery({
     queryKey: ["overview"],
     queryFn: () => api.get<Overview>("/overview"),
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
   });
   const openCount = overview.data?.open_human_required ?? 0;
 

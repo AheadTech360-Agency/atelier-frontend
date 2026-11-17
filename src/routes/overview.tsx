@@ -14,7 +14,7 @@ export function OverviewPage() {
   usePageTitle("Overview");
   const { clientScope } = useSession();
   const clientId = clientScope === "all" ? undefined : clientScope;
-  const ov = useQuery({ queryKey: ["overview"], queryFn: () => api.get<Overview>("/overview"), refetchInterval: 60_000 });
+  const ov = useQuery({ queryKey: ["overview"], queryFn: () => api.get<Overview>("/overview"), refetchInterval: 120_000 });
   const urgent = useQuery({
     queryKey: ["hr", { overview: true, clientId }],
     queryFn: () => api.get<HumanRequired[]>("/human-required", { status: "open", client_id: clientId, limit: 6 }),
@@ -22,7 +22,7 @@ export function OverviewPage() {
   const runs = useQuery({
     queryKey: ["runs", { overview: true, clientId }],
     queryFn: () => api.get<Run[]>("/runs", { client_id: clientId, limit: 8 }),
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
   });
 
   if (ov.isLoading) return <Skeleton rows={8} />;

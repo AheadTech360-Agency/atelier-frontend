@@ -44,7 +44,13 @@ export function CodeTab({ clientId }: { clientId: string }) {
   const changes = useQuery({
     queryKey: ["actions", "client", clientId],
     queryFn: () => api.get<Action[]>("/actions", { client_id: clientId, limit: 30 }),
-    refetchInterval: (qq) => (qq.state.data?.some((a) => ["approved", "applying", "pr_open"].includes(a.status)) ? 5000 : false),
+    // Fast while a change is being applied; slow while a pull request waits for review.
+    refetchInterval: (qq) =>
+      qq.state.data?.some((a) => a.status === "approved" || a.status === "applying")
+        ? 5000
+        : qq.state.data?.some((a) => a.status === "pr_open")
+          ? 60_000
+          : false,
   });
   const find = (k: Kind) => q.data?.find((i) => i.kind === k);
 

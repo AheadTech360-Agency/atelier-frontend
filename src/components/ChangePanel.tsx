@@ -24,7 +24,7 @@ export const CHANGE_STATUS: Record<string, { label: string; tone: Tone; note: st
   undone: { label: "Undone", tone: "neutral", note: "The original values are back." },
 };
 
-const IN_FLIGHT = new Set(["approved", "applying", "pr_open"]);
+const APPLYING = new Set(["approved", "applying"]);
 
 /** One sentence on what approving does to the live site, for the confirm step. */
 export function liveChangeSummary(action: Action, domain?: string): string {
@@ -49,7 +49,8 @@ export function useChangeForItem(hrId: string) {
   return useQuery({
     queryKey: ["actions", "hr", hrId],
     queryFn: async () => (await api.get<Action[]>("/actions", { human_required_id: hrId, limit: 1 }))[0] ?? null,
-    refetchInterval: (q) => (q.state.data && IN_FLIGHT.has(q.state.data.status) ? 5000 : false),
+    // Fast while it's being applied; slow while a pull request waits for review.
+    refetchInterval: (q) => (!q.state.data ? false : APPLYING.has(q.state.data.status) ? 5000 : q.state.data.status === "pr_open" ? 60_000 : false),
   });
 }
 
@@ -163,7 +164,7 @@ export function ChangePanel({ action, compact = false }: { action: Action; compa
           <p>
             <span className="font-medium text-ink">{action.title}</span>
           </p>
-          <p>{liveChangeSummary(action)}</p>
+          <LiveChangeSummary action={action} />
           <p>If something looks wrong afterwards, Revert opens a pull request that takes it back out.</p>
         </ConfirmAction>
       ) : null}
@@ -194,16 +195,31 @@ export function ChangePanel({ action, compact = false }: { action: Action; compa
 }
 
 /** Everything the change will do, unshortened, so a reviewer never approves what they can't see. */
+/** The full change (lists leave out file contents). Loaded only when someone needs it. */
+export function useFullAction(id: string, enabled: boolean) {
+  return useQuery({ queryKey: ["actions", "full", id], queryFn: () => api.get<Action>(`/actions/${id}`), enabled, staleTime: 300_000 });
+}
+
+/** One line for the confirm step, from the full change once it has loaded. */
+export function LiveChangeSummary({ action, domain }: { action: Action; domain?: string }) {
+  const full = useFullAction(action.id, true);
+  return <p>{full.data ? liveChangeSummary(full.data, domain) : "Loading what will change…"}</p>;
+}
+
 function FullChange({ action }: { action: Action }) {
-  const payload = action.payload as {
+  const [open, setOpen] = useState(false);
+  const full = useFullAction(action.id, open);
+  const payload = (full.data?.payload ?? {}) as {
     files?: { path: string; content?: string; delete?: boolean }[];
     mutations?: unknown[];
   };
   return (
-    <details className="mt-2.5 rounded-md border border-line">
+    <details className="mt-2.5 rounded-md border border-line" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary className="cursor-pointer px-3 py-2 text-[13px] font-medium text-ink-2 hover:text-ink">Technical details</summary>
       <div className="flex flex-col gap-3 border-t border-line px-3 py-3">
-        {payload.files
+        {!full.data ? (
+          <p className="text-[13px] text-ink-3">{full.error ? "Couldn't load the change. Close and open this again." : "Loading…"}</p>
+        ) : payload.files
           ? payload.files.map((f) => (
               <div key={f.path}>
                 <p className="mb-1 font-mono text-[12.5px] text-ink">

@@ -11,7 +11,10 @@ import "./styles.css";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 15_000,
+      // Stay well inside the database's free-tier egress: data counts as fresh for a minute, and
+      // switching back to the tab doesn't refetch everything (realtime and polling keep it current).
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
       retry: (count, err) => !(err instanceof ApiError && err.status < 500) && count < 2,
     },
   },

@@ -23,7 +23,7 @@ import {
 import { usePageTitle } from "@/lib/title";
 import { useClients } from "@/components/Shell";
 import { DeleteButton } from "@/components/DeleteButton";
-import { ChangePanel, liveChangeSummary, useChangeForItem } from "@/components/ChangePanel";
+import { ChangePanel, LiveChangeSummary, useChangeForItem } from "@/components/ChangePanel";
 import {
   Badge,
   Button,
@@ -45,6 +45,9 @@ import type { HumanRequired } from "@/api-types/HumanRequired";
 import type { DecisionInput } from "@/api-types/DecisionInput";
 import type { Overview } from "@/api-types/Overview";
 import type { InboxSearch } from "@/router";
+import type { Agent } from "@/api-types/Agent";
+import type { HrVersion } from "@/api-types/HrVersion";
+import { diffLines } from "@/lib/diff";
 
 const DECIDED = "needs_changes,approved,rejected,resolved";
 const HISTORY = [
@@ -61,14 +64,20 @@ type View = InboxGroup | "history";
 function useHumanRequiredRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
+    // A bot often posts several items in a row: refresh once, two seconds after the last one.
+    let timer: number | undefined;
     const ch = supabase
       .channel("hr-changes")
       .on("postgres_changes", { event: "*", schema: "app", table: "human_required" }, () => {
-        qc.invalidateQueries({ queryKey: ["hr"] });
-        qc.invalidateQueries({ queryKey: ["overview"] });
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          qc.invalidateQueries({ queryKey: ["hr"] });
+          qc.invalidateQueries({ queryKey: ["overview"] });
+        }, 2000);
       })
       .subscribe();
     return () => {
+      window.clearTimeout(timer);
       supabase.removeChannel(ch);
     };
   }, [qc]);
@@ -76,7 +85,7 @@ function useHumanRequiredRealtime() {
 
 /** Open items per tab, for the current client filter. */
 function useGroupCounts(clientId: string | undefined) {
-  const ov = useQuery({ queryKey: ["overview"], queryFn: () => api.get<Overview>("/overview"), refetchInterval: 60_000 });
+  const ov = useQuery({ queryKey: ["overview"], queryFn: () => api.get<Overview>("/overview"), refetchInterval: 120_000 });
   return useMemo(() => {
     const n: Record<InboxGroup, number> = { decide: 0, unblock: 0, answer: 0 };
     for (const c of ov.data?.open_counts ?? []) {
@@ -104,7 +113,8 @@ export function InboxPage() {
 
   const list = usePagedList<HumanRequired>(["hr"], "/human-required", {
     client_id: clientId,
-    status: view === "history" ? (search.status && search.status !== "open" ? search.status : DECIDED) : "open",
+    // Sent-back items stay in their tab while the bot revises them.
+    status: view === "history" ? (search.status && search.status !== "open" ? search.status : DECIDED) : "open,needs_changes",
     category: group ? group.categories.join(",") : undefined,
     agent_id: search.agent,
     priority: search.priority,
@@ -297,7 +307,7 @@ function QueueRow({ item, active, showType, onSelect }: { item: HumanRequired; a
       >
         <div className="flex items-center gap-2">
           <PriorityBadge p={item.priority} />
-          {showType ? <Badge>{type}</Badge> : null}
+          {item.status === "needs_changes" ? <Badge tone="p2">Sent back</Badge> : showType ? <Badge>{type}</Badge> : null}
           <span className="min-w-0 truncate text-[13px] text-ink-2">{client?.name ?? "Client"}</span>
           <span className="shrink-0 text-[13px] text-ink-3">{agentName(item.agent_id, true)}</span>
           <span className={cx("tabular ml-auto shrink-0 text-[12.5px]", item.status === "open" && days >= 3 ? "font-medium text-p2" : "text-ink-3")}>
@@ -379,11 +389,15 @@ function Detail({
     }
   }, [takeFocus]);
 
+  const agents = useQuery({ queryKey: ["agents"], queryFn: () => api.get<Agent[]>("/agents"), staleTime: 300_000 });
+  const wakes = !!agents.data?.find((a) => a.id === item.agent_id)?.rakazo_webhook_url;
+  const bot = agentName(item.agent_id);
+
   const decide = useMutation({
     mutationFn: (d: DecisionInput) => api.post<HumanRequired>(`/human-required/${item.id}/decision`, d),
     onSuccess: (_r, d) => {
       setConfirming(false);
-      const next = " The bot picks it up on its next run.";
+      const next = wakes ? ` ${bot} is starting on it now.` : " The bot picks it up on its next run.";
       const text: Record<string, string> = {
         approved: change
           ? change.kind === "github"
@@ -391,8 +405,8 @@ function Detail({
             : "Approved. Atelier is applying it now. If you need to, undo it from this item in History."
           : (edited ? "Approved with your edits." : "Approved.") + next,
         rejected: footer === "decide" ? "Rejected." + next : footer === "unblock" ? "Marked as can't do." + next : "Marked as not needed." + next,
-        needs_changes: "Sent back for changes." + next,
-        resolved: footer === "answer" ? "Answer sent." + next : "Marked done. The bot retries on its next run.",
+        needs_changes: wakes ? `Sent back. ${bot} is revising it now; the new version shows up here.` : "Sent back for changes." + next,
+        resolved: footer === "answer" ? "Answer sent." + next : wakes ? `Marked done. ${bot} is retrying now.` : "Marked done. The bot retries on its next run.",
       };
       toast(text[d.decision]);
       qc.invalidateQueries({ queryKey: ["actions"] });
@@ -454,6 +468,13 @@ function Detail({
           <p className="mt-1 text-[15px] whitespace-pre-wrap">{plain(item.ask)}</p>
         </section>
 
+        {item.status === "needs_changes" ? (
+          <p className="mt-3 max-w-[70ch] rounded-md bg-p2-soft px-4 py-2.5 text-[13.5px] text-p2">
+            Sent back {ago(item.decided_at)}. {bot} revises this item and it comes back here as a new version.
+            {wakes ? "" : " It picks it up on its next run."}
+          </p>
+        ) : null}
+
         {item.link ? (
           <a href={item.link} target="_blank" rel="noreferrer noopener" className="mt-3 inline-flex items-center gap-1 text-denim underline underline-offset-2">
             Open link <ExternalLink size={13} />
@@ -499,6 +520,8 @@ function Detail({
             <p className="mt-1 whitespace-pre-wrap">{item.reviewer_note}</p>
           </section>
         ) : null}
+
+        <VersionHistory item={item} />
 
         {canReview ? (
           <div className="mt-8 max-w-[70ch] border-t border-line pt-3">
@@ -589,7 +612,7 @@ function Detail({
           <p>
             <span className="font-medium text-ink">{change.title}</span>
           </p>
-          <p>{liveChangeSummary(change, client?.domain)}</p>
+          <LiveChangeSummary action={change} domain={client?.domain} />
           <p>Search engines can see it within minutes. You can undo it afterwards from this item, under History.</p>
         </ConfirmAction>
       ) : null}
@@ -620,5 +643,107 @@ function ChangeDraft({ markdown }: { markdown: string }) {
         </section>
       ) : null}
     </>
+  );
+}
+
+/** Every version of the draft, newest first, with what changed between any two. Loads when opened. */
+function VersionHistory({ item }: { item: HumanRequired }) {
+  const [open, setOpen] = useState(false);
+  const [pick, setPick] = useState<number | null>(null);
+  const q = useQuery({
+    queryKey: ["hr", "versions", item.id, item.updated_at],
+    queryFn: () => api.get<HrVersion[]>(`/human-required/${item.id}/versions`),
+    enabled: open,
+  });
+  const team = useQuery({
+    queryKey: ["team"],
+    queryFn: () => api.get<{ user_id: string; email: string }[]>("/team", { limit: 200 }),
+    enabled: open,
+    staleTime: 300_000,
+  });
+  const vs = q.data ?? [];
+  const shown = vs.find((v) => v.version === pick) ?? vs[0];
+  const before = shown ? vs.find((v) => v.version < shown.version) : undefined;
+  const who = (v: HrVersion) =>
+    v.author_type === "bot" ? agentName(v.author_id) : (team.data?.find((m) => m.user_id === v.author_id)?.email ?? "A reviewer");
+  return (
+    <details className="mt-6 max-w-[70ch] rounded-md border border-line" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary className="cursor-pointer px-3 py-2 text-[13px] font-medium text-ink-2 hover:text-ink">Version history</summary>
+      <div className="border-t border-line px-3 py-3">
+        {q.isLoading ? (
+          <Skeleton rows={2} />
+        ) : q.error ? (
+          <ErrorNote error={q.error} />
+        ) : vs.length <= 1 ? (
+          <p className="text-[13px] text-ink-3">Only one version so far. Revisions after you send it back show up here.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <ol className="flex flex-wrap gap-1.5" aria-label="Versions">
+              {vs.map((v) => (
+                <li key={v.id}>
+                  <button
+                    onClick={() => setPick(v.version)}
+                    aria-pressed={shown?.version === v.version}
+                    className={cx(
+                      "h-8 rounded-md border px-2.5 text-[13px]",
+                      shown?.version === v.version ? "border-denim bg-denim-soft text-denim" : "border-line text-ink-2 hover:bg-sunken",
+                    )}
+                  >
+                    Version {v.version}
+                    {v === vs[0] ? ", current" : ""}
+                  </button>
+                </li>
+              ))}
+            </ol>
+            {shown ? (
+              <div>
+                <p className="text-[13px] text-ink-2">
+                  {shown.author_type === "bot" ? (shown.version === 1 ? "First draft" : "Revised") : "Edited while approving"} by {who(shown)},{" "}
+                  {ago(shown.created_at)}.
+                </p>
+                {shown.note ? (
+                  <p className="mt-1 text-[13px] text-ink-2">
+                    Answering: <span className="text-ink">{shown.note}</span>
+                  </p>
+                ) : null}
+                {before ? (
+                  <>
+                    <p className="mt-2 mb-1 text-[12.5px] text-ink-3">
+                      Changes from version {before.version}: <span className="text-ok">added</span>,{" "}
+                      <span className="text-p1 line-through">removed</span>
+                    </p>
+                    <Diff a={before.draft ?? ""} b={shown.draft ?? ""} />
+                  </>
+                ) : (
+                  <pre className="mt-2 max-h-[420px] overflow-auto rounded-md bg-sunken px-3 py-2 text-[12.5px] whitespace-pre-wrap">
+                    {shown.draft || "(no draft)"}
+                  </pre>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function Diff({ a, b }: { a: string; b: string }) {
+  const parts = useMemo(() => diffLines(a, b), [a, b]);
+  return (
+    <div className="max-h-[420px] overflow-auto rounded-md bg-sunken py-2 text-[12.5px] leading-relaxed">
+      {parts.map((p, i) => (
+        <div
+          key={i}
+          className={cx("px-3 whitespace-pre-wrap", p.kind === "add" && "bg-ok-soft text-ok", p.kind === "del" && "bg-p1-soft text-p1 line-through")}
+        >
+          <span aria-hidden className="mr-2 inline-block w-3 select-none">
+            {p.kind === "add" ? "+" : p.kind === "del" ? "-" : ""}
+          </span>
+          <span className="sr-only">{p.kind === "add" ? "Added: " : p.kind === "del" ? "Removed: " : ""}</span>
+          {p.text || " "}
+        </div>
+      ))}
+    </div>
   );
 }

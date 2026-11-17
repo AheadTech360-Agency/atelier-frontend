@@ -21,7 +21,7 @@ export function BotsPage() {
   const stats = useQuery({
     queryKey: ["agent-stats", clientId],
     queryFn: () => api.get<AgentStats[]>("/agents/stats", { client_id: clientId }),
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
   });
   const [editing, setEditing] = useState<Agent | null>(null);
   const [running, setRunning] = useState<Agent | null>(null);
