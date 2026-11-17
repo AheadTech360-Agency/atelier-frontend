@@ -406,7 +406,7 @@ function Detail({
             ? "Approved. Atelier is opening the pull request. Merge it from this item once the checks pass."
             : "Approved. Atelier is applying it now. If you need to, undo it from this item in History."
           : (edited ? "Approved with your edits." : "Approved.") + next,
-        rejected: footer === "decide" ? "Rejected." + next : footer === "unblock" ? "Marked as can't do." + next : "Marked as not needed." + next,
+        rejected: "Rejected." + next,
         needs_changes: wakes ? `Sent back. ${bot} is revising it now; the new version shows up here.` : "Sent back for changes." + next,
         resolved: footer === "answer" ? "Answer sent." + next : wakes ? `Marked done. ${bot} is retrying now.` : "Marked done. The bot retries on its next run.",
       };
@@ -419,17 +419,20 @@ function Detail({
     onError: (e) => toast(errorText(e), "error"),
   });
 
+  // The note box is only for asking the bot to change its plan: it goes with "Send back".
   const send = (decision: string) =>
-    decide.mutate({ decision, note: note.trim() || null, edited_draft: decision === "approved" && edited && !change ? draft : null });
+    decide.mutate({
+      decision,
+      note: decision === "needs_changes" ? note.trim() : null,
+      edited_draft: decision === "approved" && edited && !change ? draft : null,
+    });
   const busy = (d: string) => decide.isPending && decide.variables?.decision === d;
   const needsNote = !note.trim();
+  // A blocker that's approved means "done, carry on"; everything else is a plain approval.
+  const approveAs = footer === "unblock" ? "resolved" : "approved";
 
-  // The main action for this kind of item. Live-site changes get a second look first.
-  const primary = () => {
-    if (footer === "decide") return live ? setConfirming(true) : send("approved");
-    if (footer === "unblock") return send("resolved");
-    if (!needsNote) send("resolved");
-  };
+  // Live-site changes get a second look first.
+  const approve = () => (live ? setConfirming(true) : send(approveAs));
 
   const meta: [string, string][] = [
     ["Client", client?.name ?? ""],
@@ -541,62 +544,37 @@ function Detail({
       </div>
 
       {decidable ? (
-        <div className="sticky bottom-0 border-t border-line bg-surface px-5 py-3 md:px-8">
-          <label htmlFor="hr-note" className={footer === "answer" ? "mb-1 block text-[13px] font-medium" : "sr-only"}>
-            {footer === "answer" ? "Your answer to the bot" : "Note to the bot"}
-          </label>
-          <Textarea
-            id="hr-note"
-            rows={footer === "answer" ? 2 : 1}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="!min-h-0 resize-y"
-            placeholder={
-              footer === "decide"
-                ? "Note to the bot. Needed to send back or reject, e.g. use the Spring collection link instead"
-                : footer === "unblock"
-                  ? "What you did, if the bot needs to know (optional). Needed for can't do this"
-                  : "e.g. Yes, go ahead, but leave the homepage alone"
-            }
-          />
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {footer === "decide" ? (
-              <>
-                <Button variant="approve" busy={busy("approved")} onClick={primary} disabled={changeQ.isLoading}>
-                  {changeOpen ? (change?.kind === "github" ? "Approve and open pull request" : "Approve and apply") : edited ? "Approve with my edits" : "Approve"}
-                </Button>
-                <Button busy={busy("needs_changes")} disabled={needsNote} onClick={() => send("needs_changes")} aria-describedby={needsNote ? "note-needed" : undefined}>
-                  Send back
-                </Button>
-                <Button variant="danger" busy={busy("rejected")} disabled={needsNote} onClick={() => send("rejected")} aria-describedby={needsNote ? "note-needed" : undefined}>
-                  Reject
-                </Button>
-              </>
-            ) : footer === "unblock" ? (
-              <>
-                <Button variant="approve" busy={busy("resolved")} onClick={primary}>
-                  Done, the bot can retry
-                </Button>
-                <Button busy={busy("rejected")} disabled={needsNote} onClick={() => send("rejected")} aria-describedby={needsNote ? "note-needed" : undefined}>
-                  Can't do this
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="approve" busy={busy("resolved")} disabled={needsNote} onClick={primary} aria-describedby={needsNote ? "note-needed" : undefined}>
-                  Send answer
-                </Button>
-                <Button busy={busy("rejected")} onClick={() => send("rejected")}>
-                  Not needed
-                </Button>
-              </>
-            )}
+        <div className="sticky bottom-0 flex flex-col gap-3 border-t border-line bg-surface px-5 py-3 md:px-8">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="approve" busy={busy(approveAs)} onClick={approve} disabled={changeQ.isLoading}>
+              {changeOpen ? (change?.kind === "github" ? "Approve and open pull request" : "Approve and apply") : edited ? "Approve with my edits" : "Approve"}
+            </Button>
+            <Button variant="danger" busy={busy("rejected")} onClick={() => send("rejected")}>
+              Reject
+            </Button>
+            <span className="text-[12.5px] text-ink-3">
+              {footer === "unblock" ? "Approve once it's done; the bot carries on." : footer === "answer" ? "Approve means yes, go ahead." : ""}
+            </span>
           </div>
-          {needsNote ? (
-            <p id="note-needed" className="mt-1.5 text-[12.5px] text-ink-3">
-              {footer === "decide" ? "Write a note to send back or reject." : footer === "unblock" ? "Write a note to say why you can't." : "Write your answer to send it."}
-            </p>
-          ) : null}
+          {/* Asking for changes: the bot revises the same item and it comes back as a new version. */}
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="hr-note" className="sr-only">
+                What should the bot change?
+              </label>
+              <Textarea
+                id="hr-note"
+                rows={1}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="!min-h-0 resize-y"
+                placeholder="Ask for changes to the plan, e.g. use the Spring collection link instead"
+              />
+            </div>
+            <Button busy={busy("needs_changes")} disabled={needsNote} onClick={() => send("needs_changes")} className="shrink-0">
+              Send back
+            </Button>
+          </div>
         </div>
       ) : !canReview ? (
         <p className="border-t border-line px-4 py-3 text-[13px] text-ink-3 md:px-8">You have view access. Reviewers and admins can decide on items.</p>
