@@ -68,7 +68,7 @@ export function BotsPage() {
                       </Button>
                     ) : isAdmin ? (
                       <Button size="sm" variant="ghost" onClick={() => setEditing(a)}>
-                        Set up Run now
+                        Add bot email
                       </Button>
                     ) : null}
                   </div>
@@ -153,7 +153,16 @@ function EditBot({ agent, onClose }: { agent: Agent; onClose: () => void }) {
     >
       <div className="flex flex-col gap-3">
         <TextField label="Schedule" value={schedule} onChange={(e) => setSchedule(e.target.value)} hint="Shown to the team. The real schedule is set in Rakazo." />
-        <TextField label="Rakazo webhook URL" type="url" value={webhook} onChange={(e) => setWebhook(e.target.value)} hint="From the bot's webhook trigger in Rakazo. Enables Run now." />
+        <TextField
+          label="Bot's email address"
+          type="text"
+          inputMode="email"
+          autoComplete="off"
+          value={webhook}
+          onChange={(e) => setWebhook(e.target.value)}
+          placeholder="seo-lead@bots.rakazo.com"
+          hint="From the Email trigger on the bot's routine in Rakazo. Atelier emails it when you decide one of its items, and for Run now."
+        />
       </div>
     </Dialog>
   );
@@ -167,7 +176,7 @@ function RunBot({ agent, onClose }: { agent: Agent; onClose: () => void }) {
   const run = useMutation({
     mutationFn: () => api.post<TriggerResult>(`/agents/${agent.id}/run`, { client_id: client || null, note: note || null }),
     onSuccess: (r) => {
-      toast(r.sent ? `${agentName(agent.id)} started` : `Rakazo answered with status ${r.status}. Check the webhook in Rakazo.`, r.sent ? "ok" : "error");
+      toast(r.sent ? `Sent. ${agentName(agent.id)} starts as soon as Rakazo gets the email.` : `Rakazo answered with status ${r.status}.`, r.sent ? "ok" : "error");
       if (r.sent) onClose();
     },
     onError: (e) => toast(errorText(e), "error"),
