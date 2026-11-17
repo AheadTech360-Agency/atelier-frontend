@@ -11,15 +11,20 @@ import { useClients } from "@/components/Shell";
 import { DeleteButton } from "@/components/DeleteButton";
 import { Button, EmptyState, ErrorNote, LoadMore, PageHeader, Select, Skeleton, cx } from "@/components/ui";
 import type { Report } from "@/api-types/Report";
+import { usePageTitle } from "@/lib/title";
 
 const TYPES = ["weekly_summary", "monthly_ai_visibility", "technical_audit", "prospect_audit", "other"];
 
 export function ReportsPage() {
-  const { id, type } = useSearch({ from: "/reports" });
+  usePageTitle("Reports");
+  const { id: picked, type } = useSearch({ from: "/reports" });
   const navigate = useNavigate({ from: "/reports" });
   const clientId = useScopedClient();
   const clients = useClients();
   const list = usePagedList<Report>(["reports", clientId], "/reports", { client_id: clientId, report_type: type });
+  // On wide screens, open the newest report instead of an empty pane.
+  const wide = typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches;
+  const id = picked ?? (wide ? list.items[0]?.id : undefined);
   const report = useQuery({ queryKey: ["report", id], queryFn: () => api.get<Report>(`/reports/${id}`), enabled: !!id });
   const clientName = (cid: string) => clients.data?.find((c) => c.id === cid)?.name ?? "";
 

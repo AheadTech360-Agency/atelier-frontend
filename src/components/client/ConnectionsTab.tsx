@@ -76,7 +76,7 @@ export function ConnectionsTab({ clientId }: { clientId: string }) {
       ) : !q.data?.length ? (
         <EmptyState
           title="No connections yet"
-          body="Start with Shopify and Google Search Console. Most bots need those two."
+          body="Start with Google Search Console and the store or CMS the site runs on. Most bots need those two."
           action={isAdmin ? <Button variant="primary" onClick={() => setEditing("new")}>Add connection</Button> : null}
         />
       ) : (

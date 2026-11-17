@@ -67,4 +67,77 @@ export function bytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
+/** Where a metric comes from, in words a reviewer knows. */
+export const SOURCE_LABEL: Record<string, string> = {
+  gsc: "Search Console",
+  ga4: "Google Analytics",
+  rank_tracker: "Rankings",
+  pagespeed: "Page speed",
+  ai_search: "AI search",
+  gbp: "Google Business Profile",
+  backlinks: "Backlinks",
+};
+
+export function sourceLabel(s: string): string {
+  return SOURCE_LABEL[s] ?? humanize(s);
+}
+
+// Bot tool and task names that show up in run summaries, as plain words.
+const TERMS: Record<string, string> = {
+  start_run: "start of run",
+  finish_run: "end of run",
+  fix_on_page: "on-page fix",
+  fix_titles: "title fix",
+  write_post: "post to write",
+  faq_content: "FAQ content",
+  syndicate_post: "syndication",
+  pin_post: "Pinterest pin",
+  link_targets: "link targets",
+  audit_pages: "page audit",
+  investigate_drop: "traffic drop check",
+  record_metrics: "saving metrics",
+  record_findings: "saving findings",
+  create_human_required: "inbox item",
+  propose_change: "planned change",
+};
+
+/**
+ * Bot-written text for people: drops record ids (full UUIDs and 8-character prefixes) and turns
+ * tool and task names into words. Keeps everything else as written.
+ */
+export function plain(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/without calling finish_run/g, "without closing its run")
+    .replace(/\s*\(?\b[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}\b\)?/gi, "")
+    .replace(/\s*\(?\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{8}\b\)?(?!-)/gi, "")
+    .replace(/`?\b([a-z]+(?:_[a-z0-9]+)+)\b`?/g, (m, w: string) => TERMS[w] ?? (m.startsWith("`") ? phrase(w) : m))
+    .replace(/\s+([,.;:])/g, "$1")
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
+/** One short label per inbox category, and what a person does with it. */
+export const INBOX_GROUPS = [
+  { id: "decide", label: "Decide", categories: ["approval"], empty: "No drafts or site changes waiting for a decision." },
+  { id: "unblock", label: "Unblock", categories: ["blocked", "login", "captcha"], empty: "No bot is stuck. Logins, captchas and missing setup show up here." },
+  { id: "answer", label: "Answer", categories: ["question", "negative_review", "other"], empty: "No questions from the bots." },
+] as const;
+
+export type InboxGroup = (typeof INBOX_GROUPS)[number]["id"];
+
+export function groupOf(category: string): InboxGroup {
+  return INBOX_GROUPS.find((g) => (g.categories as readonly string[]).includes(category))?.id ?? "answer";
+}
+
+export const CATEGORY_LABEL: Record<string, string> = {
+  approval: "Approval",
+  blocked: "Blocked",
+  login: "Login",
+  captcha: "Captcha",
+  question: "Question",
+  negative_review: "Review",
+  other: "Note",
+};
+
 export const PRIORITY_LABEL: Record<string, string> = { p1: "P1 urgent", p2: "P2 high", p3: "P3 normal", p4: "P4 low" };

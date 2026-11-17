@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { Button, ErrorNote, PageHeader, Skeleton, StatusBadge, Tabs } from "@/components/ui";
+import { Button, cx, ErrorNote, PageHeader, Skeleton, StatusBadge, Tabs } from "@/components/ui";
+import { usePageTitle } from "@/lib/title";
 import { ClientDialog } from "./clients";
 import { DeleteButton } from "@/components/DeleteButton";
 import { ClientOverviewTab } from "@/components/client/OverviewTab";
@@ -16,17 +17,22 @@ import { ContentTab, FindingsTab, OutreachTab } from "@/components/client/WorkTa
 import { CodeTab } from "@/components/client/CodeTab";
 import type { Client } from "@/api-types/Client";
 
+// Daily work up front. Setup is done once per client, so it sits under one tab.
 const TABS = [
   { id: "overview", label: "Overview" },
-  { id: "connections", label: "Logins & APIs" },
-  { id: "code", label: "Code & CMS" },
-  { id: "targets", label: "Sites" },
-  { id: "assets", label: "Images" },
-  { id: "brand", label: "Brand & claims" },
-  { id: "bots", label: "Bots" },
   { id: "findings", label: "Findings" },
   { id: "content", label: "Content" },
   { id: "outreach", label: "Outreach" },
+  { id: "setup", label: "Setup" },
+];
+
+const SETUP = [
+  { id: "bots", label: "Bots", hint: "Which bots work for this client, and how much they can do alone" },
+  { id: "connections", label: "Logins & APIs", hint: "Accounts the bots sign in to" },
+  { id: "code", label: "Code & CMS", hint: "Sanity and GitHub, so bots can change the site after approval" },
+  { id: "targets", label: "Sites", hint: "Sites to post on, watch or compare against" },
+  { id: "assets", label: "Images", hint: "Photos and graphics the bots may use" },
+  { id: "brand", label: "Brand & claims", hint: "Voice, approved claims and what can go live without asking" },
 ];
 
 export function ClientPage() {
@@ -36,6 +42,10 @@ export function ClientPage() {
   const { isAdmin, clientScope, setClientScope } = useSession();
   const [editing, setEditing] = useState(false);
   const client = useQuery({ queryKey: ["client", clientId], queryFn: () => api.get<Client>(`/clients/${clientId}`) });
+  usePageTitle(client.data?.name);
+  const section = SETUP.find((x) => x.id === tab);
+  const top = tab === "setup" || section ? "setup" : tab;
+  const setup = section?.id ?? "bots";
 
   if (client.isLoading) return <Skeleton rows={6} />;
   if (client.error) return <ErrorNote error={client.error} />;
@@ -74,18 +84,42 @@ export function ClientPage() {
           ) : null
         }
       />
-      <Tabs tabs={TABS} value={tab} onChange={(t) => navigate({ search: { tab: t } })} />
+      <Tabs tabs={TABS} value={top} onChange={(t) => navigate({ search: { tab: t } })} />
       <div className="p-4 md:p-6">
-        {tab === "overview" && <ClientOverviewTab clientId={clientId} />}
-        {tab === "connections" && <ConnectionsTab clientId={clientId} />}
-        {tab === "code" && <CodeTab clientId={clientId} />}
-        {tab === "targets" && <TargetsTab clientId={clientId} />}
-        {tab === "assets" && <AssetsTab clientId={clientId} />}
-        {tab === "brand" && <BrandTab clientId={clientId} />}
-        {tab === "bots" && <BotsTab clientId={clientId} />}
-        {tab === "findings" && <FindingsTab clientId={clientId} />}
-        {tab === "content" && <ContentTab clientId={clientId} />}
-        {tab === "outreach" && <OutreachTab clientId={clientId} />}
+        {top === "overview" && <ClientOverviewTab clientId={clientId} />}
+        {top === "findings" && <FindingsTab clientId={clientId} />}
+        {top === "content" && <ContentTab clientId={clientId} />}
+        {top === "outreach" && <OutreachTab clientId={clientId} />}
+        {top === "setup" ? (
+          <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
+            <nav aria-label="Setup" className="flex gap-1 overflow-x-auto lg:flex-col">
+              {SETUP.map((x) => (
+                <Link
+                  key={x.id}
+                  to="/clients/$clientId"
+                  params={{ clientId }}
+                  search={{ tab: x.id }}
+                  aria-current={setup === x.id ? "page" : undefined}
+                  className={cx(
+                    "flex h-9 shrink-0 items-center rounded-md px-2.5 whitespace-nowrap",
+                    setup === x.id ? "bg-denim-soft font-medium text-denim" : "text-ink-2 hover:bg-sunken hover:text-ink",
+                  )}
+                >
+                  {x.label}
+                </Link>
+              ))}
+            </nav>
+            <div className="min-w-0">
+              <p className="mb-4 text-ink-2">{SETUP.find((x) => x.id === setup)?.hint}.</p>
+              {setup === "bots" && <BotsTab clientId={clientId} />}
+              {setup === "connections" && <ConnectionsTab clientId={clientId} />}
+              {setup === "code" && <CodeTab clientId={clientId} />}
+              {setup === "targets" && <TargetsTab clientId={clientId} />}
+              {setup === "assets" && <AssetsTab clientId={clientId} />}
+              {setup === "brand" && <BrandTab clientId={clientId} />}
+            </div>
+          </div>
+        ) : null}
       </div>
       {editing ? <ClientDialog open onClose={() => setEditing(false)} client={c} /> : null}
     </div>

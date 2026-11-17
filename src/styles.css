@@ -13,7 +13,7 @@
   --color-line-strong: #c4c9d2;
   --color-ink: #161a22;
   --color-ink-2: #4a5160;
-  --color-ink-3: #7a8191;
+  --color-ink-3: #5f6675;
 
   --color-denim: #33449a;
   --color-denim-strong: #26357e;
@@ -21,14 +21,14 @@
 
   --color-p1: #b42f25;
   --color-p1-soft: #f8e5e3;
-  --color-p2: #a8640c;
+  --color-p2: #8a4f06;
   --color-p2-soft: #f7ecdc;
   --color-p3: #4f5868;
   --color-p3-soft: #e9ebef;
-  --color-p4: #8b919c;
+  --color-p4: #5d6470;
   --color-p4-soft: #f0f1f3;
 
-  --color-ok: #2f7a4b;
+  --color-ok: #276b40;
   --color-ok-soft: #e2f1e7;
 
   --radius-sm: 4px;
@@ -50,7 +50,7 @@
       --color-line-strong: #3a414e;
       --color-ink: #e8eaee;
       --color-ink-2: #b2b8c4;
-      --color-ink-3: #848b99;
+      --color-ink-3: #9198a6;
       --color-denim: #8d9cf0;
       --color-denim-strong: #a9b5f5;
       --color-denim-soft: #232b4d;
@@ -60,7 +60,7 @@
       --color-p2-soft: #36291a;
       --color-p3: #aab2c0;
       --color-p3-soft: #262b35;
-      --color-p4: #858c98;
+      --color-p4: #9aa1ad;
       --color-p4-soft: #20242c;
       --color-ok: #7cc797;
       --color-ok-soft: #1c3226;
@@ -80,6 +80,18 @@
   :focus-visible {
     outline: 2px solid var(--color-denim);
     outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-denim-soft);
+    color: var(--color-ink);
+  }
+  input,
+  textarea {
+    caret-color: var(--color-denim);
+  }
+  * {
+    scrollbar-color: var(--color-line-strong) transparent;
   }
 
   .tabular {

@@ -83,12 +83,12 @@ export function BrandTab({ clientId }: { clientId: string }) {
       <Panel title="Approved claims">
         <div className="p-4">
           <p className="mb-3 text-[13px] text-ink-2">
-            Bots only make claims about materials, sustainability, sizing or discounts when they appear here or in Shopify product data. Add the source so the team can check it.
+            Bots only make claims about materials, sustainability, sizing or discounts when they appear here or in the store's product data. Add the source so the team can check it.
           </p>
           <ul className="flex flex-col gap-2">
             {claims.map((c, i) => (
               <li key={i} className="flex gap-2">
-                <div className="grid flex-1 gap-1.5 sm:grid-cols-[2fr_1fr]">
+                <div className="grid flex-1 gap-1.5 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                   <Input
                     aria-label="Claim"
                     disabled={ro}
@@ -121,7 +121,7 @@ export function BrandTab({ clientId }: { clientId: string }) {
       </Panel>
 
       <Panel title="Publishing limits" className="lg:col-span-2">
-        <div className="grid gap-6 p-4 md:grid-cols-[220px_1fr]">
+        <div className="grid gap-6 p-4 md:grid-cols-[220px_minmax(0,1fr)]">
           <Field label="Blog posts per week, max" hint="Bots can't publish past this, even with approval.">
             <Input type="number" min={0} max={14} disabled={ro} value={cadence} onChange={(e) => touch(setCadence)(Number(e.target.value))} className="w-24" />
           </Field>

@@ -3,7 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useScopedClient, useSession } from "@/lib/session";
-import { agentName, ago } from "@/lib/format";
+import { agentName, ago, plain } from "@/lib/format";
+import { usePageTitle } from "@/lib/title";
 import { useClients } from "@/components/Shell";
 import { Button, Dialog, ErrorNote, Field, PageHeader, Panel, Select, Skeleton, StatusBadge, TextField, errorText, useToast } from "@/components/ui";
 import { ProspectReviewButton, ProspectReviewsPanel } from "@/components/ProspectReviews";
@@ -12,6 +13,7 @@ import type { AgentStats } from "@/api-types/AgentStats";
 import type { TriggerResult } from "@/api-types/TriggerResult";
 
 export function BotsPage() {
+  usePageTitle("Bots");
   const { isAdmin } = useSession();
   const clientId = useScopedClient();
   const agents = useQuery({ queryKey: ["agents"], queryFn: () => api.get<Agent[]>("/agents") });
@@ -24,22 +26,19 @@ export function BotsPage() {
   const [editing, setEditing] = useState<Agent | null>(null);
   const [running, setRunning] = useState<Agent | null>(null);
 
-  const mcpUrl = `${(import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/api\/v1\/?$/, "") ?? "http://127.0.0.1:8080"}/mcp`;
-
   return (
     <div>
       <PageHeader
         title="Bots"
         description={
           <>
-            Each bot connects to <code className="rounded bg-sunken px-1 text-[13px]">{mcpUrl}</code> with its own key from{" "}
+            What each bot does, when it last ran and whether it's stuck. Connection keys live in{" "}
             <Link to="/settings" search={{ tab: "keys" }} className="text-denim underline underline-offset-2">
               Settings, Bot keys
             </Link>
             .
           </>
         }
-        actions={<ProspectReviewButton />}
       />
       {agents.isLoading ? (
         <Skeleton rows={7} />
@@ -47,9 +46,6 @@ export function BotsPage() {
         <ErrorNote error={agents.error} />
       ) : (
         <div className="grid gap-4 p-4 md:p-6 lg:grid-cols-2">
-          <div className="lg:col-span-2">
-            <ProspectReviewsPanel />
-          </div>
           {agents.data!.map((a) => {
             const st = stats.data?.find((x) => x.agent_id === a.id);
             const last = st?.last_run_at ? { status: st.last_run_status ?? "", started_at: st.last_run_at, summary: st.last_run_summary, error: st.last_run_error } : null;
@@ -66,9 +62,15 @@ export function BotsPage() {
                         Edit
                       </Button>
                     ) : null}
-                    <Button size="sm" onClick={() => setRunning(a)} disabled={!a.rakazo_webhook_url} title={a.rakazo_webhook_url ? undefined : "Add the Rakazo webhook URL first"}>
-                      Run now
-                    </Button>
+                    {a.rakazo_webhook_url ? (
+                      <Button size="sm" onClick={() => setRunning(a)}>
+                        Run now
+                      </Button>
+                    ) : isAdmin ? (
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(a)}>
+                        Set up Run now
+                      </Button>
+                    ) : null}
                   </div>
                 }
               >
@@ -99,11 +101,18 @@ export function BotsPage() {
                   </div>
                 </dl>
                 {last?.summary || last?.error ? (
-                  <p className={`border-t border-line px-4 py-2.5 text-[13px] ${last.error ? "text-p1" : "text-ink-2"}`}>{last.error ?? last.summary}</p>
+                  <p className={`border-t border-line px-4 py-2.5 text-[13px] ${last.error ? "text-p1" : "text-ink-2"}`}>{plain(last.error ?? last.summary)}</p>
                 ) : null}
               </Panel>
             );
           })}
+          <div className="flex flex-col gap-2 lg:col-span-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-ink-2">Before a sales call, the Technical Auditor can review a prospect's public pages.</p>
+              <ProspectReviewButton />
+            </div>
+            <ProspectReviewsPanel />
+          </div>
         </div>
       )}
       {editing ? <EditBot agent={editing} onClose={() => setEditing(null)} /> : null}

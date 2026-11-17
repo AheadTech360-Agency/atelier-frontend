@@ -5,7 +5,8 @@ import { Copy } from "lucide-react";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/lib/paged";
 import { useSession } from "@/lib/session";
-import { AGENTS, agentName, ago, humanize } from "@/lib/format";
+import { AGENTS, agentName, ago, humanize, plain } from "@/lib/format";
+import { usePageTitle } from "@/lib/title";
 import { useClients } from "@/components/Shell";
 import { DeleteButton } from "@/components/DeleteButton";
 import {
@@ -35,6 +36,7 @@ import type { KeyClientsInput } from "@/api-types/KeyClientsInput";
 import type { AuditEntry } from "@/api-types/AuditEntry";
 
 export function SettingsPage() {
+  usePageTitle("Settings");
   const { tab = "account" } = useSearch({ from: "/settings" });
   const navigate = useNavigate({ from: "/settings" });
   const { isAdmin } = useSession();
@@ -121,7 +123,7 @@ function TeamTab() {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
       <Panel title="Team">
         {q.isLoading ? (
           <Skeleton />
@@ -294,8 +296,8 @@ function KeysTab() {
   return (
     <Panel title="Bot API keys" actions={<Button size="sm" variant="primary" onClick={() => setCreating(true)}>Create key</Button>}>
       <p className="border-b border-line px-4 py-2.5 text-[13px] text-ink-2">
-        Create one team key and add Atelier to Rakazo once, under Integrations, as an HTTPS MCP server with the key as a Bearer
-        token. Every bot uses it and names itself on each call. Change a key's clients here at any time; the key stays the same.
+        One team key connects all seven bots. Add it to Rakazo once, under Integrations, and every bot uses it. You can change which
+        clients a key covers at any time without making a new key.
       </p>
       {q.isLoading ? (
         <Skeleton />
@@ -548,7 +550,7 @@ function AuditTab() {
                   <td className="px-4 py-2">{who(e)}</td>
                   <td className="px-4 py-2">
                     {AUDIT_ACTION[e.action] ?? humanize(e.action.replace(/[._]/g, " "))}
-                    {auditName(e.detail) ? <span className="text-ink-3">: {auditName(e.detail)}</span> : null}
+                    {auditName(e.detail) ? <span className="text-ink-3">: {AGENTS.some((a) => a.id === auditName(e.detail)) ? agentName(auditName(e.detail)) : plain(auditName(e.detail))}</span> : null}
                   </td>
                   <td className="px-4 py-2 text-ink-2">{clientName(e.client_id)}</td>
                 </tr>

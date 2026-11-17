@@ -151,7 +151,7 @@ function IntegrationCard({ clientId, kind, current }: { clientId: string; kind: 
         </div>
         <p className="text-[13px] text-ink-2">{meta.what}</p>
         {current ? (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[13px]">
             {meta.fields.map((f) => (
               <div key={f.key} className="contents">
                 <dt className="text-ink-3">{f.label}</dt>

@@ -7,8 +7,10 @@ import { useClients } from "@/components/Shell";
 import { Button, Dialog, EmptyState, ErrorNote, PageHeader, Skeleton, StatusBadge, TextField, errorText, useToast } from "@/components/ui";
 import type { Client } from "@/api-types/Client";
 import type { ClientInput } from "@/api-types/ClientInput";
+import { usePageTitle } from "@/lib/title";
 
 export function ClientsPage() {
+  usePageTitle("Clients");
   const { isAdmin } = useSession();
   const clients = useClients();
   const [adding, setAdding] = useState(false);
@@ -27,7 +29,7 @@ export function ClientsPage() {
       ) : !clients.data?.length ? (
         <EmptyState
           title="No clients yet"
-          body="Add your first client, then connect Shopify and Search Console so the bots have data to work with."
+          body="Add your first client, then connect Search Console and the site's store or CMS so the bots have data to work with."
           action={isAdmin ? <Button variant="primary" onClick={() => setAdding(true)}>Add client</Button> : null}
         />
       ) : (

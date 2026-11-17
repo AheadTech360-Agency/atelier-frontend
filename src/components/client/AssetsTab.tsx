@@ -83,7 +83,7 @@ export function AssetsTab({ clientId }: { clientId: string }) {
           <div className="flex-1">
             <p className="font-medium">Drop images here, or choose files</p>
             <p className="text-[13px] text-ink-2">
-              Stored in Cloudflare R2. Bots use these in articles first, then real Shopify product photos. Up to 25 MB each. Tag them so bots pick the right ones.
+              Stored in Cloudflare R2. Bots use these first, then real product photos from the store. Up to 25 MB each. Tag them so bots pick the right ones.
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Tags for new uploads">
               {TAGS.map((t) => {

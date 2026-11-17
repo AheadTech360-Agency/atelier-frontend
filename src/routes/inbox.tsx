@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Markdown from "react-markdown";
@@ -8,12 +8,26 @@ import { api } from "@/lib/api";
 import { usePagedList } from "@/lib/paged";
 import { supabase } from "@/lib/supabase";
 import { useScopedClient, useSession } from "@/lib/session";
-import { AGENTS, agentName, ago, daysOpen, humanize, phrase } from "@/lib/format";
+import {
+  AGENTS,
+  CATEGORY_LABEL,
+  INBOX_GROUPS,
+  agentName,
+  ago,
+  daysOpen,
+  groupOf,
+  humanize,
+  plain,
+  type InboxGroup,
+} from "@/lib/format";
+import { usePageTitle } from "@/lib/title";
 import { useClients } from "@/components/Shell";
 import { DeleteButton } from "@/components/DeleteButton";
-import { ChangePanel, useChangeForItem } from "@/components/ChangePanel";
+import { ChangePanel, liveChangeSummary, useChangeForItem } from "@/components/ChangePanel";
 import {
+  Badge,
   Button,
+  ConfirmAction,
   cx,
   EmptyState,
   ErrorNote,
@@ -29,15 +43,19 @@ import {
 } from "@/components/ui";
 import type { HumanRequired } from "@/api-types/HumanRequired";
 import type { DecisionInput } from "@/api-types/DecisionInput";
+import type { Overview } from "@/api-types/Overview";
 import type { InboxSearch } from "@/router";
 
-const STATUSES = [
-  { id: "open", label: "Waiting on you" },
+const DECIDED = "needs_changes,approved,rejected,resolved";
+const HISTORY = [
+  { id: DECIDED, label: "Everything decided" },
   { id: "needs_changes", label: "Sent back" },
   { id: "approved", label: "Approved" },
-  { id: "rejected", label: "Rejected" },
-  { id: "resolved", label: "Resolved" },
+  { id: "rejected", label: "Rejected or not needed" },
+  { id: "resolved", label: "Done or answered" },
 ];
+
+type View = InboxGroup | "history";
 
 /** Live updates: any change to Human Required refreshes the lists. */
 function useHumanRequiredRealtime() {
@@ -56,117 +74,178 @@ function useHumanRequiredRealtime() {
   }, [qc]);
 }
 
+/** Open items per tab, for the current client filter. */
+function useGroupCounts(clientId: string | undefined) {
+  const ov = useQuery({ queryKey: ["overview"], queryFn: () => api.get<Overview>("/overview"), refetchInterval: 60_000 });
+  return useMemo(() => {
+    const n: Record<InboxGroup, number> = { decide: 0, unblock: 0, answer: 0 };
+    for (const c of ov.data?.open_counts ?? []) {
+      if (clientId && c.client_id !== clientId) continue;
+      n[groupOf(c.category)] += c.n;
+    }
+    return { counts: n, loaded: !!ov.data };
+  }, [ov.data, clientId]);
+}
+
 export function InboxPage() {
   useHumanRequiredRealtime();
+  usePageTitle("Human Required");
   const search = useSearch({ from: "/inbox" });
   const navigate = useNavigate({ from: "/inbox" });
   const clientId = useScopedClient();
-  const status = search.status ?? "open";
+  const { counts, loaded } = useGroupCounts(clientId);
   const setSearch = (patch: Partial<InboxSearch>) => navigate({ search: (s) => ({ ...s, ...patch }) });
+
+  // Old links used ?status=: anything other than open means history.
+  const legacyHistory = search.status && search.status !== "open" && !search.view;
+  const firstBusy = (INBOX_GROUPS.find((g) => counts[g.id] > 0)?.id ?? "decide") as View;
+  const view: View = (search.view as View) ?? (legacyHistory ? "history" : loaded ? firstBusy : "decide");
+  const group = INBOX_GROUPS.find((g) => g.id === view);
 
   const list = usePagedList<HumanRequired>(["hr"], "/human-required", {
     client_id: clientId,
-    status,
+    status: view === "history" ? (search.status && search.status !== "open" ? search.status : DECIDED) : "open",
+    category: group ? group.categories.join(",") : undefined,
     agent_id: search.agent,
     priority: search.priority,
-    older_than_days: search.stale ? 3 : undefined,
+    older_than_days: search.stale && view !== "history" ? 3 : undefined,
   });
 
   const items = list.items;
   const selected = items.find((i) => i.id === search.item) ?? null;
+  const open = !!(selected || search.item);
+  // Set when j or k moved the selection, so the detail takes focus for keyboard and screen-reader users.
+  const keyMoved = useRef(false);
 
-  // j / k to move through the queue.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement;
-      if (t.closest("input, textarea, select, [contenteditable]") || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (t.closest("input, textarea, select, [contenteditable], dialog") || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key !== "j" && e.key !== "k") return;
       const idx = items.findIndex((i) => i.id === search.item);
       const next = e.key === "j" ? Math.min(items.length - 1, idx + 1) : Math.max(0, idx - 1);
-      if (items[next]) setSearch({ item: items[next].id });
+      if (items[next]) {
+        keyMoved.current = true;
+        setSearch({ item: items[next].id });
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  const tabs: { id: View; label: string; count?: number }[] = [
+    ...INBOX_GROUPS.map((g) => ({ id: g.id as View, label: g.label, count: counts[g.id] })),
+    { id: "history", label: "History" },
+  ];
+
   return (
     <div className="flex h-[calc(100dvh-48px)] flex-col">
-      <PageHeader
-        title="Human Required"
-        description="Approvals, blocks and questions from the bots. Bots act on your decision at the start of their next run."
-      />
-      <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2 md:px-6">
-        <div role="tablist" aria-label="Status" className="flex flex-wrap gap-1">
-          {STATUSES.map((s) => (
-            <button
-              key={s.id}
-              role="tab"
-              aria-selected={status === s.id}
-              onClick={() => setSearch({ status: s.id, item: undefined })}
-              className={cx(
-                "h-8 rounded-md px-2.5 text-[13px]",
-                status === s.id ? "bg-ink text-surface" : "text-ink-2 hover:bg-sunken",
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Select
-            aria-label="Bot"
-            value={search.agent ?? ""}
-            onChange={(e) => setSearch({ agent: e.target.value || undefined, item: undefined })}
-            className="h-8 w-auto"
-          >
-            <option value="">All bots</option>
-            {AGENTS.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
+      <div className={cx(open && "max-md:hidden")}>
+        <PageHeader title="Human Required" description="What the bots need from a person. They act on your answer at the start of their next run." />
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2 md:px-6">
+          <div role="tablist" aria-label="Inbox" className="flex flex-wrap gap-1">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={view === t.id}
+                onClick={() => setSearch({ view: t.id, status: undefined, item: undefined, stale: undefined })}
+                className={cx(
+                  "inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px]",
+                  view === t.id ? "bg-ink text-surface" : "text-ink-2 hover:bg-sunken",
+                )}
+              >
+                {t.label}
+                {t.count ? (
+                  <span className={cx("tabular rounded-sm px-1 text-[12px] font-semibold", view === t.id ? "bg-surface/20" : "bg-denim text-white")}>
+                    {t.count}
+                  </span>
+                ) : null}
+              </button>
             ))}
-          </Select>
-          <Select
-            aria-label="Priority"
-            value={search.priority ?? ""}
-            onChange={(e) => setSearch({ priority: e.target.value || undefined, item: undefined })}
-            className="h-8 w-auto"
-          >
-            <option value="">Any priority</option>
-            <option value="p1">P1 urgent</option>
-            <option value="p2">P2 high</option>
-            <option value="p3">P3 normal</option>
-            <option value="p4">P4 low</option>
-          </Select>
-          {status === "open" ? (
-            <Button
-              size="sm"
-              variant={search.stale ? "primary" : "secondary"}
-              onClick={() => setSearch({ stale: search.stale ? undefined : "1", item: undefined })}
-              aria-pressed={!!search.stale}
+          </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {view === "history" ? (
+              <Select
+                aria-label="Decision"
+                value={search.status && search.status !== "open" ? search.status : DECIDED}
+                onChange={(e) => setSearch({ status: e.target.value === DECIDED ? undefined : e.target.value, item: undefined })}
+                className="h-8 w-auto"
+              >
+                {HISTORY.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.label}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
+            <Select
+              aria-label="Bot"
+              value={search.agent ?? ""}
+              onChange={(e) => setSearch({ agent: e.target.value || undefined, item: undefined })}
+              className="h-8 w-auto"
             >
-              Open 3+ days
-            </Button>
-          ) : null}
+              <option value="">All bots</option>
+              {AGENTS.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="Priority"
+              value={search.priority ?? ""}
+              onChange={(e) => setSearch({ priority: e.target.value || undefined, item: undefined })}
+              className="h-8 w-auto"
+            >
+              <option value="">Any priority</option>
+              <option value="p1">P1 urgent</option>
+              <option value="p2">P2 high</option>
+              <option value="p3">P3 normal</option>
+              <option value="p4">P4 low</option>
+            </Select>
+            {view !== "history" ? (
+              <Button
+                size="sm"
+                variant={search.stale ? "primary" : "secondary"}
+                onClick={() => setSearch({ stale: search.stale ? undefined : "1", item: undefined })}
+                aria-pressed={!!search.stale}
+              >
+                Open 3+ days
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1">
         {/* Queue */}
-        <div className={cx("min-h-0 w-full overflow-y-auto border-r border-line md:w-[380px] md:shrink-0", (selected || search.item) && "max-md:hidden")}>
+        <div className={cx("min-h-0 w-full overflow-y-auto border-r border-line md:w-[380px] md:shrink-0", open && "max-md:hidden")}>
           {list.isLoading ? (
             <Skeleton rows={8} />
           ) : list.error ? (
             <ErrorNote error={list.error} />
           ) : items.length === 0 ? (
             <EmptyState
-              title={status === "open" ? "Nothing waiting on you" : `No ${phrase(status)} items`}
-              body={status === "open" ? "When a bot needs an approval or gets stuck, it shows up here." : "Try another status or clear the filters."}
+              title={group ? "All clear" : "Nothing decided yet"}
+              body={
+                search.agent || search.priority || search.stale
+                  ? "Nothing matches these filters. Clear them to see everything."
+                  : group
+                    ? group.empty
+                    : "Items you've decided show up here."
+              }
             />
           ) : (
-            <ul>
+            <ul aria-label="Items">
               {items.map((i) => (
-                <QueueRow key={i.id} item={i} active={i.id === search.item} onSelect={() => setSearch({ item: i.id })} />
+                <QueueRow
+                  key={i.id}
+                  item={i}
+                  showType={view === "history" || group?.categories.length !== 1}
+                  active={i.id === search.item}
+                  onSelect={() => setSearch({ item: i.id })}
+                />
               ))}
             </ul>
           )}
@@ -174,11 +253,12 @@ export function InboxPage() {
         </div>
 
         {/* Detail */}
-        <div className={cx("min-h-0 flex-1 overflow-y-auto bg-surface", !(selected || search.item) && "max-md:hidden")}>
-          {selected || search.item ? (
+        <div className={cx("min-h-0 flex-1 overflow-y-auto bg-surface", !open && "max-md:hidden")}>
+          {open ? (
             <FullDetail
               key={selected?.id ?? search.item}
               id={selected?.id ?? search.item!}
+              takeFocus={keyMoved}
               onBack={() => setSearch({ item: undefined })}
               onDecided={() => {
                 // Move straight to the next item so a queue can be cleared without extra clicks.
@@ -188,24 +268,28 @@ export function InboxPage() {
                 setSearch({ item: next && next.id !== current ? next.id : undefined });
               }}
             />
-          ) : (
-            <EmptyState title="Select an item" body="Pick an item from the queue to read the ask and the draft. Use j and k to move through the list." />
-          )}
+          ) : items.length ? (
+            <EmptyState title="Pick an item" body="Choose one from the list to see what the bot needs. Press j and k to move through the list." />
+          ) : null}
         </div>
       </div>
     </div>
   );
 }
 
-function QueueRow({ item, active, onSelect }: { item: HumanRequired; active: boolean; onSelect: () => void }) {
+function QueueRow({ item, active, showType, onSelect }: { item: HumanRequired; active: boolean; showType: boolean; onSelect: () => void }) {
   const clients = useClients();
   const client = clients.data?.find((c) => c.id === item.client_id);
   const days = daysOpen(item.created_at);
+  const type = CATEGORY_LABEL[item.category] ?? humanize(item.category);
+  const when = item.status === "open" ? (days === 0 ? "today" : `${days} days open`) : ago(item.decided_at);
+  const title = plain(item.issue);
   return (
     <li>
       <button
         onClick={onSelect}
         aria-current={active || undefined}
+        aria-label={`${item.priority.toUpperCase()}, ${type}, ${client?.name ?? "client"}, ${agentName(item.agent_id, true)}: ${title.slice(0, 110)}. ${when}`}
         className={cx(
           "flex w-full flex-col gap-1 border-b border-line px-4 py-3 text-left md:px-5",
           active ? "bg-denim-soft" : "hover:bg-sunken",
@@ -213,53 +297,104 @@ function QueueRow({ item, active, onSelect }: { item: HumanRequired; active: boo
       >
         <div className="flex items-center gap-2">
           <PriorityBadge p={item.priority} />
-          <span className="truncate text-[13px] text-ink-2">{client?.name ?? "Client"}</span>
+          {showType ? <Badge>{type}</Badge> : null}
+          <span className="min-w-0 truncate text-[13px] text-ink-2">{client?.name ?? "Client"}</span>
           <span className="shrink-0 text-[13px] text-ink-3">{agentName(item.agent_id, true)}</span>
           <span className={cx("tabular ml-auto shrink-0 text-[12.5px]", item.status === "open" && days >= 3 ? "font-medium text-p2" : "text-ink-3")}>
             {item.status === "open" ? (days === 0 ? "today" : `${days}d`) : ago(item.decided_at)}
           </span>
         </div>
-        <p className="line-clamp-2 font-medium">{item.issue}</p>
+        <p className="line-clamp-2 font-medium">{title}</p>
       </button>
     </li>
   );
 }
 
 /** The list only carries a 500-character preview of each draft; load the whole item when it's opened. */
-function FullDetail({ id, onBack, onDecided }: { id: string; onBack: () => void; onDecided: () => void }) {
+function FullDetail({
+  id,
+  takeFocus,
+  onBack,
+  onDecided,
+}: {
+  id: string;
+  takeFocus: React.MutableRefObject<boolean>;
+  onBack: () => void;
+  onDecided: () => void;
+}) {
   const q = useQuery({ queryKey: ["hr", "item", id], queryFn: () => api.get<HumanRequired>(`/human-required/${id}`) });
   if (q.isLoading) return <Skeleton rows={6} />;
   if (q.error) return <ErrorNote error={q.error} />;
-  return <Detail key={`${id}-${q.data!.updated_at}`} item={q.data!} onBack={onBack} onDecided={onDecided} />;
+  return <Detail key={`${id}-${q.data!.updated_at}`} item={q.data!} takeFocus={takeFocus} onBack={onBack} onDecided={onDecided} />;
 }
 
-function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () => void; onDecided: () => void }) {
+type Footer = "decide" | "unblock" | "answer";
+
+function Detail({
+  item,
+  takeFocus,
+  onBack,
+  onDecided,
+}: {
+  item: HumanRequired;
+  takeFocus: React.MutableRefObject<boolean>;
+  onBack: () => void;
+  onDecided: () => void;
+}) {
   const { canReview } = useSession();
   const clients = useClients();
   const client = clients.data?.find((c) => c.id === item.client_id);
   const qc = useQueryClient();
   const toast = useToast();
+  const heading = useRef<HTMLHeadingElement>(null);
   const original = item.edited_draft ?? item.draft ?? "";
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(original);
   const [note, setNote] = useState(item.reviewer_note ?? "");
+  const [confirming, setConfirming] = useState(false);
   const edited = draft.trim() !== (item.draft ?? "").trim() && draft.trim() !== "";
   const decidable = canReview && (item.status === "open" || item.status === "needs_changes" || !item.acted_on_at);
   // A planned site change: Atelier applies it on approval, exactly as shown (no draft edits).
-  const change = useChangeForItem(item.id).data ?? null;
+  const changeQ = useChangeForItem(item.id);
+  const change = changeQ.data ?? null;
   const changeOpen = change?.status === "proposed";
+  const live = changeOpen && change?.kind !== "github";
+
+  // Buttons follow what the person has to do: approvals and site changes get decided, blockers get
+  // done, questions get answered. A question that came with a draft (a review reply) is decided.
+  const footer: Footer =
+    change || item.category === "approval"
+      ? "decide"
+      : groupOf(item.category) === "unblock"
+        ? "unblock"
+        : item.draft
+          ? "decide"
+          : "answer";
+  const type = CATEGORY_LABEL[item.category] ?? humanize(item.category);
+
+  useEffect(() => {
+    if (takeFocus.current) {
+      takeFocus.current = false;
+      heading.current?.focus();
+    }
+  }, [takeFocus]);
 
   const decide = useMutation({
     mutationFn: (d: DecisionInput) => api.post<HumanRequired>(`/human-required/${item.id}/decision`, d),
     onSuccess: (_r, d) => {
-      const applying = change ? (change.kind === "github" ? "Approved. Atelier is opening the pull request." : "Approved. Atelier is applying it now.") : null;
-      const verb: Record<string, string> = {
-        approved: applying ?? (edited ? "Approved with your edits" : "Approved"),
-        rejected: "Rejected",
-        needs_changes: "Sent back for changes",
-        resolved: "Marked resolved",
+      setConfirming(false);
+      const next = " The bot picks it up on its next run.";
+      const text: Record<string, string> = {
+        approved: change
+          ? change.kind === "github"
+            ? "Approved. Atelier is opening the pull request. Merge it from this item once the checks pass."
+            : "Approved. Atelier is applying it now. If you need to, undo it from this item in History."
+          : (edited ? "Approved with your edits." : "Approved.") + next,
+        rejected: footer === "decide" ? "Rejected." + next : footer === "unblock" ? "Marked as can't do." + next : "Marked as not needed." + next,
+        needs_changes: "Sent back for changes." + next,
+        resolved: footer === "answer" ? "Answer sent." + next : "Marked done. The bot retries on its next run.",
       };
-      toast(change && d.decision === "approved" ? verb.approved : `${verb[d.decision]}. The bot picks it up on its next run.`);
+      toast(text[d.decision]);
       qc.invalidateQueries({ queryKey: ["actions"] });
       onDecided();
       qc.invalidateQueries({ queryKey: ["hr"] });
@@ -270,44 +405,40 @@ function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () =
 
   const send = (decision: string) =>
     decide.mutate({ decision, note: note.trim() || null, edited_draft: decision === "approved" && edited && !change ? draft : null });
-
+  const busy = (d: string) => decide.isPending && decide.variables?.decision === d;
   const needsNote = !note.trim();
-  const isApproval = !!item.draft;
 
-  const meta = useMemo(
-    () => [
-      ["Client", client?.name ?? ""],
-      ["Bot", agentName(item.agent_id)],
-      ["Category", humanize(item.category)],
-      ["Action", item.action_type ? humanize(item.action_type) : "None"],
-      ["Raised", ago(item.created_at)],
-    ],
-    [client, item],
-  );
+  // The main action for this kind of item. Live-site changes get a second look first.
+  const primary = () => {
+    if (footer === "decide") return live ? setConfirming(true) : send("approved");
+    if (footer === "unblock") return send("resolved");
+    if (!needsNote) send("resolved");
+  };
+
+  const meta: [string, string][] = [
+    ["Client", client?.name ?? ""],
+    ["Bot", agentName(item.agent_id)],
+    ["Type", type],
+    ...(item.action_type ? ([["Action", humanize(item.action_type)]] as [string, string][]) : []),
+    ["Raised", ago(item.created_at)],
+  ];
+
+  const askTitle = footer === "unblock" ? "What the bot needs done" : footer === "answer" ? "The bot's question" : "What the bot needs from you";
 
   return (
-    <article className="flex min-h-full flex-col">
+    <article className="flex min-h-full flex-col" aria-labelledby={`hr-${item.id}`}>
       <div className="flex-1 px-4 py-5 md:px-8">
-        <button onClick={onBack} className="mb-3 inline-flex items-center gap-1 text-[13px] text-ink-2 md:hidden">
-          <ArrowLeft size={14} /> Back to queue
+        <button onClick={onBack} className="mb-3 inline-flex h-8 items-center gap-1 text-[13px] text-ink-2 md:hidden">
+          <ArrowLeft size={14} /> Back to list
         </button>
         <div className="flex flex-wrap items-center gap-2">
           <PriorityBadge p={item.priority} />
           <StatusBadge s={item.status} />
           {item.acted_on_at ? <span className="text-[12.5px] text-ink-3">Bot acted {ago(item.acted_on_at)}</span> : null}
-          <span className="ml-auto">
-            <DeleteButton
-              labelled
-              path={`/human-required/${item.id}`}
-              thing="item"
-              name={item.issue}
-              consequence="The bot won't see a decision for it. It stays in the audit log."
-              invalidate={["hr", "overview"]}
-              onDeleted={onDecided}
-            />
-          </span>
         </div>
-        <h2 className="mt-2 max-w-[70ch] text-[19px] leading-snug font-semibold">{item.issue}</h2>
+        <h2 id={`hr-${item.id}`} ref={heading} tabIndex={-1} className="mt-2 max-w-[70ch] text-[19px] leading-snug font-semibold focus:outline-none">
+          {plain(item.issue)}
+        </h2>
 
         <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
           {meta.map(([k, v]) => (
@@ -318,9 +449,9 @@ function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () =
           ))}
         </dl>
 
-        <section className="mt-5 max-w-[70ch] rounded-md border-l-[3px] border-denim bg-denim-soft px-4 py-3">
-          <h3 className="text-[13px] font-medium text-denim">What the bot needs from you</h3>
-          <p className="mt-1 text-[15px] whitespace-pre-wrap">{item.ask}</p>
+        <section className="mt-5 max-w-[70ch] rounded-md bg-denim-soft px-4 py-3">
+          <h3 className="text-[13px] font-medium text-denim">{askTitle}</h3>
+          <p className="mt-1 text-[15px] whitespace-pre-wrap">{plain(item.ask)}</p>
         </section>
 
         {item.link ? (
@@ -329,29 +460,24 @@ function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () =
           </a>
         ) : null}
 
-        {change ? (
-          <div className="mt-5 max-w-[70ch]">
-            <ChangePanel action={change} />
+        {item.draft && changeQ.isLoading ? (
+          <div className="mt-6 max-w-[68ch]">
+            <Skeleton rows={4} />
           </div>
-        ) : null}
-
-        {isApproval ? (
+        ) : item.draft && change ? (
+          <ChangeDraft markdown={item.draft} />
+        ) : item.draft ? (
           <section className="mt-6">
             <div className="mb-2 flex max-w-[68ch] items-center justify-between">
-              <h3 className="font-semibold">{change ? "The change" : item.edited_draft ? "Draft (with reviewer edits)" : "Draft"}</h3>
-              {decidable && !change ? (
+              <h3 className="font-semibold">{footer !== "decide" ? "Details" : item.edited_draft ? "Draft, with reviewer edits" : "Draft"}</h3>
+              {decidable && footer === "decide" ? (
                 <Button size="sm" variant="ghost" onClick={() => setEditing((v) => !v)}>
                   {editing ? "Preview" : "Edit draft"}
                 </Button>
               ) : null}
             </div>
             {editing ? (
-              <Textarea
-                aria-label="Draft"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                className="proof min-h-[420px] !text-[16px]"
-              />
+              <Textarea aria-label="Draft" value={draft} onChange={(e) => setDraft(e.target.value)} className="proof min-h-[420px] !text-[16px]" />
             ) : (
               <div className="proof rounded-md border border-line bg-canvas/40 px-5 py-4">
                 <Markdown remarkPlugins={[remarkGfm]}>{draft || "_Empty draft_"}</Markdown>
@@ -361,45 +487,138 @@ function Detail({ item, onBack, onDecided }: { item: HumanRequired; onBack: () =
           </section>
         ) : null}
 
+        {change ? (
+          <div className="mt-5 max-w-[70ch]">
+            <ChangePanel action={change} />
+          </div>
+        ) : null}
+
         {item.reviewer_note && !decidable ? (
           <section className="mt-5 max-w-[70ch]">
-            <h3 className="text-[13px] font-medium text-ink-2">Reviewer note</h3>
+            <h3 className="text-[13px] font-medium text-ink-2">Note to the bot</h3>
             <p className="mt-1 whitespace-pre-wrap">{item.reviewer_note}</p>
           </section>
+        ) : null}
+
+        {canReview ? (
+          <div className="mt-8 max-w-[70ch] border-t border-line pt-3">
+            <DeleteButton
+              labelled
+              path={`/human-required/${item.id}`}
+              thing="item"
+              name={plain(item.issue).slice(0, 80)}
+              consequence="The bot won't see a decision for it. It stays in the audit log."
+              invalidate={["hr", "overview"]}
+              onDeleted={onDecided}
+            />
+          </div>
         ) : null}
       </div>
 
       {decidable ? (
         <div className="sticky bottom-0 border-t border-line bg-surface px-4 py-3 md:px-8">
-          <label htmlFor="hr-note" className="sr-only">
-            Note to the bot
+          <label htmlFor="hr-note" className={footer === "answer" ? "mb-1 block text-[13px] font-medium" : "sr-only"}>
+            {footer === "answer" ? "Your answer to the bot" : "Note to the bot"}
           </label>
           <Textarea
             id="hr-note"
-            rows={1}
+            rows={footer === "answer" ? 2 : 1}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="!min-h-0 resize-y"
-            placeholder="Note to the bot. Required to send back or reject, e.g. use the Spring collection link instead"
+            placeholder={
+              footer === "decide"
+                ? "Note to the bot. Needed to send back or reject, e.g. use the Spring collection link instead"
+                : footer === "unblock"
+                  ? "What you did, if the bot needs to know (optional). Needed for can't do this"
+                  : "e.g. Yes, go ahead, but leave the homepage alone"
+            }
           />
           <div className="mt-2.5 flex flex-wrap gap-2">
-            <Button variant="approve" busy={decide.isPending && decide.variables?.decision === "approved"} onClick={() => send("approved")}>
-              {changeOpen ? (change?.kind === "github" ? "Approve and open pull request" : "Approve and apply") : edited ? "Approve with my edits" : "Approve"}
-            </Button>
-            <Button disabled={needsNote} title={needsNote ? "Add a note first" : undefined} onClick={() => send("needs_changes")}>
-              Send back for changes
-            </Button>
-            <Button variant="danger" disabled={needsNote} title={needsNote ? "Add a note first" : undefined} onClick={() => send("rejected")}>
-              Reject
-            </Button>
-            <Button variant="ghost" className="ml-auto" onClick={() => send("resolved")}>
-              Mark resolved
-            </Button>
+            {footer === "decide" ? (
+              <>
+                <Button variant="approve" busy={busy("approved")} onClick={primary} disabled={changeQ.isLoading}>
+                  {changeOpen ? (change?.kind === "github" ? "Approve and open pull request" : "Approve and apply") : edited ? "Approve with my edits" : "Approve"}
+                </Button>
+                <Button busy={busy("needs_changes")} disabled={needsNote} onClick={() => send("needs_changes")} aria-describedby={needsNote ? "note-needed" : undefined}>
+                  Send back
+                </Button>
+                <Button variant="danger" busy={busy("rejected")} disabled={needsNote} onClick={() => send("rejected")} aria-describedby={needsNote ? "note-needed" : undefined}>
+                  Reject
+                </Button>
+              </>
+            ) : footer === "unblock" ? (
+              <>
+                <Button variant="approve" busy={busy("resolved")} onClick={primary}>
+                  Done, the bot can retry
+                </Button>
+                <Button busy={busy("rejected")} disabled={needsNote} onClick={() => send("rejected")} aria-describedby={needsNote ? "note-needed" : undefined}>
+                  Can't do this
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="approve" busy={busy("resolved")} disabled={needsNote} onClick={primary} aria-describedby={needsNote ? "note-needed" : undefined}>
+                  Send answer
+                </Button>
+                <Button busy={busy("rejected")} onClick={() => send("rejected")}>
+                  Not needed
+                </Button>
+              </>
+            )}
           </div>
+          {needsNote ? (
+            <p id="note-needed" className="mt-1.5 text-[12.5px] text-ink-3">
+              {footer === "decide" ? "Write a note to send back or reject." : footer === "unblock" ? "Write a note to say why you can't." : "Write your answer to send it."}
+            </p>
+          ) : null}
         </div>
       ) : !canReview ? (
         <p className="border-t border-line px-4 py-3 text-[13px] text-ink-3 md:px-8">You have view access. Reviewers and admins can decide on items.</p>
       ) : null}
+
+      {change && confirming ? (
+        <ConfirmAction
+          open
+          onClose={() => setConfirming(false)}
+          title="Change the live site?"
+          confirmLabel="Apply to the live site"
+          busy={busy("approved")}
+          onConfirm={() => send("approved")}
+        >
+          <p>
+            <span className="font-medium text-ink">{change.title}</span>
+          </p>
+          <p>{liveChangeSummary(change, client?.domain)}</p>
+          <p>Search engines can see it within minutes. You can undo it afterwards from this item, under History.</p>
+        </ConfirmAction>
+      ) : null}
     </article>
+  );
+}
+
+/** A planned site change: the before and after first, then the bot's reasons. */
+function ChangeDraft({ markdown }: { markdown: string }) {
+  const lines = markdown.split("\n");
+  const start = lines.findIndex((l) => l.trim().startsWith("|"));
+  const why = start > 0 ? lines.slice(0, start).join("\n").trim() : "";
+  const change = start >= 0 ? lines.slice(start).join("\n").trim() : markdown;
+  return (
+    <>
+      <section className="mt-6">
+        <h3 className="mb-2 font-semibold">The change</h3>
+        <div className="proof rounded-md border border-line bg-canvas/40 px-5 py-4">
+          <Markdown remarkPlugins={[remarkGfm]}>{change}</Markdown>
+        </div>
+      </section>
+      {why ? (
+        <section className="mt-5">
+          <h3 className="mb-1 font-semibold">Why the bot wants it</h3>
+          <div className="proof text-ink-2">
+            <Markdown remarkPlugins={[remarkGfm]}>{why}</Markdown>
+          </div>
+        </section>
+      ) : null}
+    </>
   );
 }

@@ -10,11 +10,15 @@ import { BotsPage } from "./routes/bots";
 import { TasksPage } from "./routes/tasks";
 import { ReportsPage } from "./routes/reports";
 import { SettingsPage } from "./routes/settings";
-import { Skeleton } from "./components/ui";
 
 function Root() {
   const { session, loading, role, meError } = useSession();
-  if (loading) return <Skeleton rows={6} />;
+  if (loading)
+    return (
+      <div className="grid min-h-dvh place-items-center" aria-busy="true">
+        <p className="text-ink-3">Loading Atelier…</p>
+      </div>
+    );
   if (!session) return <LoginPage />;
   if (meError) return <ServerUnreachable />;
   if (!role) return <NotOnTeam />;
@@ -30,6 +34,8 @@ const rootRoute = createRootRoute({ component: Root });
 const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
 
 export type InboxSearch = {
+  /** decide, unblock, answer or history */
+  view?: string;
   status?: string;
   agent?: string;
   priority?: string;
@@ -45,6 +51,7 @@ const routes = [
     path: "/inbox",
     component: InboxPage,
     validateSearch: (s: Record<string, unknown>): InboxSearch => ({
+      view: str(s.view),
       status: str(s.status),
       agent: str(s.agent),
       priority: str(s.priority),

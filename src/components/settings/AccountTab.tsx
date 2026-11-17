@@ -38,7 +38,7 @@ export function AccountTab() {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
       <Panel title="My account">
         <dl className="grid gap-3 p-4 sm:grid-cols-2">
           <div>
@@ -119,17 +119,26 @@ export function NotificationsTab() {
           <span className="text-ink-2">
             {s.slack_configured
               ? "P1 items post to Slack as soon as a bot raises them."
-              : "Add SLACK_WEBHOOK_URL to the backend settings and restart it to turn this on."}
+              : "Off until an engineer connects Slack. See the setup note below."}
           </span>
         </div>
         <ul className="list-disc pl-5 text-[13px] text-ink-2">
           <li>P1 alert: client name, bot, issue title and a link. Never drafts or other client data.</li>
           <li>
-            Daily digest at {String(s.digest_hour_utc).padStart(2, "0")}:00 UTC: open items by priority, and anything open 3 days or more. Change it with
-            DIGEST_HOUR_UTC.
+            Daily digest at {String(s.digest_hour_utc).padStart(2, "0")}:00 UTC: open items by priority, and anything open 3 days or more.
           </li>
-          {!s.dashboard_url_set ? <li>Links point to localhost until DASHBOARD_URL is set to the live dashboard address.</li> : null}
+          {!s.dashboard_url_set ? <li>Links in Slack won't open the dashboard yet. See the setup note below.</li> : null}
         </ul>
+        {!s.slack_configured || !s.dashboard_url_set ? (
+          <details className="rounded-md border border-line text-[13px]">
+            <summary className="cursor-pointer px-3 py-2 font-medium text-ink-2 hover:text-ink">Setup note for an engineer</summary>
+            <ul className="list-disc border-t border-line py-2 pr-3 pl-8 text-ink-2">
+              {!s.slack_configured ? <li>Set SLACK_WEBHOOK_URL on the backend and restart it.</li> : null}
+              {!s.dashboard_url_set ? <li>Set DASHBOARD_URL to the live dashboard address.</li> : null}
+              <li>DIGEST_HOUR_UTC changes the digest time.</li>
+            </ul>
+          </details>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <Button disabled={!s.slack_configured} busy={test.isPending} onClick={() => test.mutate()}>
             Send test message

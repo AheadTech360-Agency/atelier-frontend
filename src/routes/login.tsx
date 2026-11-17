@@ -24,7 +24,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[1.15fr_1fr]">
+    <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <Showcase />
 
       <div className="flex flex-col justify-center bg-surface px-6 py-12 sm:px-12">
@@ -105,7 +105,7 @@ export function ServerUnreachable() {
   const api = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://127.0.0.1:8080/api/v1";
   const status = meError instanceof ApiError ? meError.status : null;
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[1.15fr_1fr]">
+    <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <Showcase />
       <div className="flex flex-col justify-center bg-surface px-6 py-12 sm:px-12">
         <div className="mx-auto w-full max-w-sm">
@@ -139,7 +139,7 @@ export function ServerUnreachable() {
 export function NotOnTeam() {
   const { me } = useSession();
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[1.15fr_1fr]">
+    <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <Showcase />
       <div className="flex flex-col justify-center bg-surface px-6 py-12 sm:px-12">
         <div className="mx-auto w-full max-w-sm">

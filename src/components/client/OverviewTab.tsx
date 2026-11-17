@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/lib/api";
-import { agentName, ago, dateLabel, humanize, phrase } from "@/lib/format";
+import { agentName, ago, dateLabel, humanize, phrase, plain, sourceLabel } from "@/lib/format";
 import { EmptyState, Panel, Select, Skeleton, StatusBadge } from "../ui";
 import type { MetricName } from "@/api-types/MetricName";
 import type { MetricPoint } from "@/api-types/MetricPoint";
@@ -16,7 +16,9 @@ const INVERTED = new Set(["position", "map_pack_rank", "lcp", "cls", "inp"]);
 export function ClientOverviewTab({ clientId }: { clientId: string }) {
   const names = useQuery({ queryKey: ["metric-names", clientId], queryFn: () => api.get<MetricName[]>(`/clients/${clientId}/metric-names`) });
   const [pick, setPick] = useState<string>("");
-  const selected = pick || (names.data?.[0] ? `${names.data[0].source}|${names.data[0].metric}` : "");
+  // Open on Search Console clicks when there are any: it's the number most people look for first.
+  const first = names.data?.find((n) => n.source === "gsc" && n.metric === "clicks") ?? names.data?.[0];
+  const selected = pick || (first ? `${first.source}|${first.metric}` : "");
   const [source, metric] = selected.split("|");
 
   const points = useQuery({
@@ -38,7 +40,7 @@ export function ClientOverviewTab({ clientId }: { clientId: string }) {
   }, [points.data, metric]);
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <Panel
         title="Trend"
         actions={
@@ -46,7 +48,7 @@ export function ClientOverviewTab({ clientId }: { clientId: string }) {
             <Select aria-label="Metric" value={selected} onChange={(e) => setPick(e.target.value)} className="h-8 w-auto">
               {names.data.map((n) => (
                 <option key={`${n.source}|${n.metric}`} value={`${n.source}|${n.metric}`}>
-                  {n.source.toUpperCase()} {phrase(n.metric)}
+                  {sourceLabel(n.source)}: {phrase(n.metric)}
                 </option>
               ))}
             </Select>
@@ -78,12 +80,14 @@ export function ClientOverviewTab({ clientId }: { clientId: string }) {
 
       <div className="flex flex-col gap-4">
         <Panel title="Latest reports">
-          {reports.data?.length ? (
+          {reports.isLoading ? (
+            <Skeleton rows={3} />
+          ) : reports.data?.length ? (
             <ul className="divide-y divide-line">
               {reports.data.map((r) => (
                 <li key={r.id}>
                   <Link to="/reports" search={{ id: r.id }} className="block px-4 py-2.5 hover:bg-sunken">
-                    <span className="block truncate font-medium">{r.title}</span>
+                    <span className="block truncate font-medium">{plain(r.title)}</span>
                     <span className="text-[12.5px] text-ink-3">
                       {humanize(r.report_type)} from {agentName(r.agent_id, true)}, {ago(r.created_at)}
                     </span>
@@ -96,16 +100,18 @@ export function ClientOverviewTab({ clientId }: { clientId: string }) {
           )}
         </Panel>
         <Panel title="Recent bot runs">
-          {runs.data?.length ? (
-            <ul className="py-1">
+          {runs.isLoading ? (
+            <Skeleton rows={3} />
+          ) : runs.data?.length ? (
+            <ul className="divide-y divide-line">
               {runs.data.map((r) => (
-                <li key={r.id} className="flex items-center gap-2 px-4 py-1.5 text-[13px]">
-                  <StatusBadge s={r.status} />
-                  <span className="min-w-0 flex-1 truncate" title={r.summary}>
-                    {agentName(r.agent_id, true)}
-                    {r.summary ? `: ${r.summary}` : ""}
-                  </span>
-                  <span className="shrink-0 text-ink-3">{ago(r.started_at)}</span>
+                <li key={r.id} className="px-4 py-2 text-[13px]">
+                  <div className="flex items-center gap-2">
+                    <StatusBadge s={r.status} />
+                    <span className="min-w-0 flex-1 truncate font-medium">{agentName(r.agent_id)}</span>
+                    <span className="shrink-0 text-ink-3">{ago(r.started_at)}</span>
+                  </div>
+                  {r.summary ? <p className="mt-0.5 line-clamp-2 text-ink-2">{plain(r.summary)}</p> : null}
                 </li>
               ))}
             </ul>

@@ -4,7 +4,7 @@ import { ExternalLink, GitPullRequest, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { ago } from "@/lib/format";
-import { Badge, Button, cx, errorText, useToast } from "./ui";
+import { Badge, Button, ConfirmAction, cx, errorText, useToast } from "./ui";
 import type { Action } from "@/api-types/Action";
 
 type Tone = "neutral" | "denim" | "ok" | "p1" | "p2" | "p3" | "p4";
@@ -25,6 +25,24 @@ export const CHANGE_STATUS: Record<string, { label: string; tone: Tone; note: st
 };
 
 const IN_FLIGHT = new Set(["approved", "applying", "pr_open"]);
+
+/** One sentence on what approving does to the live site, for the confirm step. */
+export function liveChangeSummary(action: Action, domain?: string): string {
+  const p = action.payload as { mutations?: unknown[]; files?: unknown[] };
+  const site = domain ? ` on ${domain}` : "";
+  if (action.kind === "github") {
+    const n = p.files?.length ?? 0;
+    return `Merging puts ${n === 1 ? "1 file change" : `${n} file changes`} into the live branch${site}. Vercel deploys it right away.`;
+  }
+  const ids = new Set(
+    (p.mutations ?? []).map((m) => {
+      const o = m as { id?: string; doc?: { _id?: string } };
+      return o.id ?? o.doc?._id ?? "";
+    }),
+  );
+  const n = ids.size || 1;
+  return `Atelier makes the change shown above to ${n === 1 ? "1 item" : `${n} items`}${site}, exactly as written.`;
+}
 
 /** The change linked to an inbox item, or null. Refreshes while it's being applied. */
 export function useChangeForItem(hrId: string) {
@@ -53,7 +71,7 @@ function checksLabel(checks: unknown): { text: string; tone: Tone } | null {
 /** Status, outcome and the actions a person can take on a planned change. */
 export function ChangePanel({ action, compact = false }: { action: Action; compact?: boolean }) {
   const { isAdmin } = useSession();
-  const [confirmUndo, setConfirmUndo] = useState(false);
+  const [confirm, setConfirm] = useState<"merge" | "undo" | null>(null);
   const qc = useQueryClient();
   const toast = useToast();
   const s = CHANGE_STATUS[action.status] ?? { label: action.status, tone: "neutral" as Tone, note: "" };
@@ -61,7 +79,7 @@ export function ChangePanel({ action, compact = false }: { action: Action; compa
   const run = useMutation({
     mutationFn: (what: "merge" | "undo" | "retry" | "refresh") => api.post<Action>(`/actions/${action.id}/${what}`),
     onSuccess: (a, what) => {
-      setConfirmUndo(false);
+      setConfirm(null);
       qc.invalidateQueries({ queryKey: ["actions"] });
       const done: Record<string, string> = {
         merge: "Merged. Vercel deploys it.",
@@ -113,7 +131,7 @@ export function ChangePanel({ action, compact = false }: { action: Action; compa
               busy={busy("merge")}
               disabled={!checksPassed}
               title={checksPassed ? undefined : action.result?.checks === "failure" ? "The build failed: open the pull request" : "Wait for the checks to finish"}
-              onClick={() => run.mutate("merge")}
+              onClick={() => setConfirm("merge")}
             >
               Merge
             </Button>
@@ -128,10 +146,9 @@ export function ChangePanel({ action, compact = false }: { action: Action; compa
               size="sm"
               variant="danger"
               busy={busy("undo")}
-              onClick={() => (confirmUndo ? run.mutate("undo") : setConfirmUndo(true))}
-              onBlur={() => setConfirmUndo(false)}
+              onClick={() => setConfirm("undo")}
             >
-              {confirmUndo ? `Click again to ${undoLabel.toLowerCase()}` : undoLabel}
+              {undoLabel}
             </Button>
           ) : null}
           {action.status === "pr_open" ? (
@@ -140,6 +157,37 @@ export function ChangePanel({ action, compact = false }: { action: Action; compa
             </Button>
           ) : null}
         </div>
+      ) : null}
+      {confirm === "merge" ? (
+        <ConfirmAction open onClose={() => setConfirm(null)} title="Merge this pull request?" confirmLabel="Merge and deploy" busy={busy("merge")} onConfirm={() => run.mutate("merge")}>
+          <p>
+            <span className="font-medium text-ink">{action.title}</span>
+          </p>
+          <p>{liveChangeSummary(action)}</p>
+          <p>If something looks wrong afterwards, Revert opens a pull request that takes it back out.</p>
+        </ConfirmAction>
+      ) : null}
+      {confirm === "undo" ? (
+        <ConfirmAction
+          open
+          onClose={() => setConfirm(null)}
+          title={`${undoLabel}?`}
+          confirmLabel={undoLabel}
+          variant="danger"
+          busy={busy("undo")}
+          onConfirm={() => run.mutate("undo")}
+        >
+          <p>
+            <span className="font-medium text-ink">{action.title}</span>
+          </p>
+          <p>
+            {action.status === "pr_open"
+              ? "The pull request closes without merging. Nothing on the site changes."
+              : action.status === "merged"
+                ? "Atelier opens a new pull request that takes this change back out. Merge it to finish."
+                : "Atelier puts the original values back on the live site."}
+          </p>
+        </ConfirmAction>
       ) : null}
     </section>
   );
@@ -153,7 +201,7 @@ function FullChange({ action }: { action: Action }) {
   };
   return (
     <details className="mt-2.5 rounded-md border border-line">
-      <summary className="cursor-pointer px-3 py-2 text-[13px] font-medium text-ink-2 hover:text-ink">Show the full change</summary>
+      <summary className="cursor-pointer px-3 py-2 text-[13px] font-medium text-ink-2 hover:text-ink">Technical details</summary>
       <div className="flex flex-col gap-3 border-t border-line px-3 py-3">
         {payload.files
           ? payload.files.map((f) => (

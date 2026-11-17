@@ -8,6 +8,7 @@ import { useClients } from "@/components/Shell";
 import { DeleteButton } from "@/components/DeleteButton";
 import { Button, Dialog, ErrorNote, Field, LoadMore, PageHeader, PriorityBadge, Select, Skeleton, TextField, Textarea, errorText, useToast } from "@/components/ui";
 import type { Task } from "@/api-types/Task";
+import { usePageTitle } from "@/lib/title";
 
 const COLUMNS = [
   { id: "queued", label: "Queued" },
@@ -17,6 +18,7 @@ const COLUMNS = [
 ];
 
 export function TasksPage() {
+  usePageTitle("Tasks");
   const clientId = useScopedClient();
   const { canReview } = useSession();
   const clients = useClients();

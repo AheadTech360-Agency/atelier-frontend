@@ -354,6 +354,56 @@ export function Dialog({
   );
 }
 
+/** A second look before something that changes a live site. The button repeats the action. */
+export function ConfirmAction({
+  open,
+  onClose,
+  title,
+  children,
+  confirmLabel,
+  variant = "approve",
+  busy,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  confirmLabel: string;
+  variant?: "approve" | "danger" | "primary";
+  busy?: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={title}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Not yet
+          </Button>
+          <Button variant={variant} busy={busy} onClick={onConfirm} autoFocus>
+            {confirmLabel}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-2 text-ink-2">{children}</div>
+    </Dialog>
+  );
+}
+
+/** A keyboard shortcut hint inside a button. Hidden from screen readers (aria-keyshortcuts carries it). */
+export function Kbd({ children }: { children: ReactNode }) {
+  return (
+    <kbd aria-hidden className="ml-1 hidden rounded-sm border border-current/30 px-1 font-sans text-[11px] leading-4 opacity-80 md:inline">
+      {children}
+    </kbd>
+  );
+}
+
 /** Destructive confirmation: the button names exactly what will be deleted. */
 export function ConfirmDelete({
   open,

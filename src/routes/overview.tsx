@@ -2,7 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import { ago, agentName } from "@/lib/format";
+import { ago, agentName, groupOf, plain } from "@/lib/format";
+import { usePageTitle } from "@/lib/title";
 import { cx, EmptyState, ErrorNote, PageHeader, Panel, PriorityBadge, Skeleton, StatusBadge } from "@/components/ui";
 import { UsagePanel } from "@/components/UsagePanel";
 import type { Overview } from "@/api-types/Overview";
@@ -10,6 +11,7 @@ import type { HumanRequired } from "@/api-types/HumanRequired";
 import type { Run } from "@/api-types/Run";
 
 export function OverviewPage() {
+  usePageTitle("Overview");
   const { clientScope } = useSession();
   const clientId = clientScope === "all" ? undefined : clientScope;
   const ov = useQuery({ queryKey: ["overview"], queryFn: () => api.get<Overview>("/overview"), refetchInterval: 60_000 });
@@ -27,11 +29,12 @@ export function OverviewPage() {
   if (ov.error) return <ErrorNote error={ov.error} />;
   const o = ov.data!;
   const clients = clientId ? o.clients.filter((c) => c.client_id === clientId) : o.clients;
+  const openHere = clientId ? (clients[0]?.open_human_required ?? 0) : o.open_human_required;
 
   return (
     <div>
       <PageHeader title="Overview" description="What needs a person today, and how the bots are running." />
-      <div className="grid gap-4 p-4 md:p-6 xl:grid-cols-[1.3fr_1fr]">
+      <div className="grid gap-4 p-4 md:p-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         {/* The queue is the headline: it's the only thing that blocks the bots. */}
         <Panel
           title="Waiting on the team"
@@ -43,7 +46,7 @@ export function OverviewPage() {
         >
           <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 border-b border-line px-4 py-4">
             <p>
-              <span className="tabular text-[34px] leading-none font-semibold tracking-[-0.02em]">{o.open_human_required}</span>
+              <span className="tabular text-[34px] leading-none font-semibold tracking-[-0.02em]">{openHere}</span>
               <span className="ml-2 text-ink-2">open items</span>
             </p>
             <div className="flex flex-wrap gap-3 text-[13px] text-ink-2">
@@ -64,15 +67,23 @@ export function OverviewPage() {
             <ul>
               {urgent.data.map((i) => (
                 <li key={i.id} className="border-b border-line last:border-0">
-                  <Link to="/inbox" search={{ item: i.id }} className="flex items-center gap-3 px-4 py-2.5 hover:bg-sunken">
+                  <Link to="/inbox" search={{ view: groupOf(i.category), item: i.id }} className="flex items-center gap-3 px-4 py-2.5 hover:bg-sunken">
                     <PriorityBadge p={i.priority} />
-                    <span className="min-w-0 flex-1 truncate">{i.issue}</span>
+                    <span className="min-w-0 flex-1 truncate">{plain(i.issue)}</span>
                     <span className="shrink-0 text-[12.5px] text-ink-3">{agentName(i.agent_id, true)}</span>
                   </Link>
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : null}
+          {urgent.data?.length && openHere > urgent.data.length ? (
+            <Link to="/inbox" className="block border-t border-line px-4 py-2.5 text-[13px] text-denim hover:bg-sunken">
+              And {openHere - urgent.data.length} more in the inbox
+            </Link>
+          ) : null}
+          {urgent.isLoading ? (
+            <Skeleton rows={3} />
+          ) : urgent.data?.length ? null : (
             <p className="px-4 py-6 text-ink-2">Nothing waiting. The bots aren't blocked.</p>
           )}
         </Panel>
@@ -86,7 +97,9 @@ export function OverviewPage() {
           </dl>
           <div className="border-t border-line">
             <h3 className="px-4 pt-3 pb-1 text-[13px] font-medium text-ink-2">Latest runs</h3>
-            {runs.data?.length ? (
+            {runs.isLoading ? (
+              <Skeleton rows={3} />
+            ) : runs.data?.length ? (
               <ul className="pb-2">
                 {runs.data.map((r) => (
                   <li key={r.id} className="flex items-center gap-2 px-4 py-1.5 text-[13px]">
@@ -97,7 +110,7 @@ export function OverviewPage() {
                 ))}
               </ul>
             ) : (
-              <p className="px-4 pb-4 text-ink-3">No runs yet. Runs appear once a bot connects over MCP.</p>
+              <p className="px-4 pb-4 text-ink-3">No runs yet. Runs show up here once a bot starts working.</p>
             )}
           </div>
         </Panel>
