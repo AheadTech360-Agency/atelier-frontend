@@ -15,12 +15,14 @@ import { BrandTab } from "@/components/client/BrandTab";
 import { BotsTab } from "@/components/client/BotsTab";
 import { ContentTab, FindingsTab, OutreachTab } from "@/components/client/WorkTabs";
 import { CodeTab } from "@/components/client/CodeTab";
+import { KeywordsTab } from "@/components/client/KeywordsTab";
 import type { Client } from "@/api-types/Client";
 
 // Daily work up front. Setup is done once per client, so it sits under one tab.
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "findings", label: "Findings" },
+  { id: "keywords", label: "Keywords" },
   { id: "content", label: "Content" },
   { id: "outreach", label: "Outreach" },
   { id: "setup", label: "Setup" },
@@ -88,6 +90,7 @@ export function ClientPage() {
       <div className="p-4 md:p-6">
         {top === "overview" && <ClientOverviewTab clientId={clientId} />}
         {top === "findings" && <FindingsTab clientId={clientId} />}
+        {top === "keywords" && <KeywordsTab clientId={clientId} />}
         {top === "content" && <ContentTab clientId={clientId} />}
         {top === "outreach" && <OutreachTab clientId={clientId} />}
         {top === "setup" ? (

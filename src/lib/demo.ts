@@ -234,6 +234,28 @@ export async function demoRequest(method: string, path: string, query: Record<st
   if (path === "/usage") return { days: 30, by_bot: [], by_client: [] };
   if (path === "/notifications") return { slack_configured: false, digest_hour_utc: 13, dashboard_url_set: true };
   if (path === "/team") return [{ user_id: "demo", email: "reviewer@aheadtech360.com", full_name: null, role: "admin", created_at: at(40 * D) }];
+  if (clientOf && path.endsWith("/competitors")) {
+    return [
+      ["vuori.com", "Vuori", "confirmed", 412, 18_900, 1_240_000, 100],
+      ["outdoorvoices.com", "Outdoor Voices", "suggested", 287, 9_400, 310_000, 100],
+      ["girlfriend.com", "", "suggested", 164, 6_100, 145_000, 0],
+    ].map(([domain, name, status, shared, all, traffic, kw], i) => ({
+      id: `comp-${i}`, client_id: clientOf, domain, name, status, shared_keywords: shared, organic_keywords: all,
+      organic_traffic: traffic, notes: "", agent_id: "on_page", keywords_pulled_at: kw ? at(3 * D) : null, keyword_count: kw, updated_at: at(3 * D),
+    }));
+  }
+  if (clientOf && path.endsWith("/competitor-keywords")) {
+    const words = ["linen pants women", "wide leg linen trousers", "summer linen set", "linen shirt dress", "best travel pants",
+      "organic cotton joggers", "linen shorts women", "breathable work pants", "linen co ord set", "lightweight summer dress"];
+    const rows = words.map((keyword, i) => ({
+      id: `kw-${i}`, competitor_id: `comp-${i % 2}`, competitor_domain: i % 2 ? "outdoorvoices.com" : "vuori.com", keyword,
+      search_volume: 22_000 - i * 1_900, cpc: 1.2, difficulty: 28 + i * 4, intent: i % 3 ? "commercial" : "transactional",
+      position: 1 + (i % 9), url: `https://${i % 2 ? "outdoorvoices.com" : "vuori.com"}/collections/${keyword.replace(/ /g, "-")}`, created_at: at(3 * D),
+    }));
+    const s = (q.search ?? "").toLowerCase();
+    return page(rows.filter((r) => (!q.competitor_id || r.competitor_id === q.competitor_id) && r.keyword.includes(s)
+      && r.search_volume >= Number(q.min_volume ?? 0)));
+  }
   if (path === "/outreach/counts") return [];
   return [];
 }

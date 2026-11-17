@@ -3,4 +3,8 @@
 /**
  * One row of the shared keyword-to-page map for a client.
  */
-export type KeywordMapping = { id: string, client_id: string, keyword: string, url: string, intent: string, cluster: string, priority: string, notes: string, agent_id: string, updated_at: string, };
+export type KeywordMapping = { id: string, client_id: string, keyword: string, url: string, intent: string, cluster: string, priority: string, notes: string, 
+/**
+ * The bot that last changed it; empty when a person added or edited it.
+ */
+agent_id: string | null, updated_at: string, };
