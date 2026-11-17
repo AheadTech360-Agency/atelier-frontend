@@ -396,6 +396,7 @@ function Detail({
 
   const agents = useQuery({ queryKey: ["agents"], queryFn: () => api.get<Agent[]>("/agents"), staleTime: 300_000 });
   const wakes = !!agents.data?.find((a) => a.id === item.agent_id)?.rakazo_webhook_url;
+  const chatUrl = agents.data?.find((a) => a.id === item.agent_id)?.rakazo_chat_url ?? null;
   const bot = agentName(item.agent_id);
 
   const decide = useMutation({
@@ -480,6 +481,19 @@ function Detail({
           <p className="mt-3 max-w-[70ch] rounded-md bg-p2-soft px-4 py-2.5 text-[13.5px] text-p2">
             Sent back {ago(item.decided_at)}. {bot} revises this item and it comes back here as a new version.
             {wakes ? "" : " It picks it up on its next run."}
+          </p>
+        ) : null}
+
+        {chatUrl ? (
+          <p className="mt-3">
+            <a
+              href={chatUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[13px] font-medium text-ink-2 underline underline-offset-2 hover:text-ink"
+            >
+              Chat with {bot} in Rakazo <ExternalLink size={13} aria-hidden />
+            </a>
           </p>
         ) : null}
 

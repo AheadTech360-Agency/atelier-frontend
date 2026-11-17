@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ExternalLink } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -62,6 +63,7 @@ export function BotsPage() {
                         Edit
                       </Button>
                     ) : null}
+                    {a.rakazo_chat_url ? <ChatLink url={a.rakazo_chat_url} name={a.name} /> : null}
                     {a.rakazo_webhook_url ? (
                       <Button size="sm" onClick={() => setRunning(a)}>
                         Run now
@@ -126,8 +128,9 @@ function EditBot({ agent, onClose }: { agent: Agent; onClose: () => void }) {
   const toast = useToast();
   const [schedule, setSchedule] = useState(agent.schedule_label);
   const [webhook, setWebhook] = useState(agent.rakazo_webhook_url ?? "");
+  const [chat, setChat] = useState(agent.rakazo_chat_url ?? "");
   const save = useMutation({
-    mutationFn: () => api.put(`/agents/${agent.id}`, { schedule_label: schedule, rakazo_webhook_url: webhook || null }),
+    mutationFn: () => api.put(`/agents/${agent.id}`, { schedule_label: schedule, rakazo_webhook_url: webhook || null, rakazo_chat_url: chat || null }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agents"] });
       toast("Bot saved");
@@ -162,6 +165,15 @@ function EditBot({ agent, onClose }: { agent: Agent; onClose: () => void }) {
           onChange={(e) => setWebhook(e.target.value)}
           placeholder="seo-lead@bots.rakazo.com"
           hint="From the Email trigger on the bot's routine in Rakazo. Atelier emails it when you decide one of its items, and for Run now."
+        />
+        <TextField
+          label="Chat link"
+          type="url"
+          autoComplete="off"
+          value={chat}
+          onChange={(e) => setChat(e.target.value)}
+          placeholder="https://app.rakazo.com/app/..."
+          hint="Open the bot's chat in Rakazo and copy the address from the browser bar. Open chat uses it."
         />
       </div>
     </Dialog>
@@ -211,5 +223,21 @@ function RunBot({ agent, onClose }: { agent: Agent; onClose: () => void }) {
         <TextField label="Note for the bot" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Prospect audit for brand.com before Thursday's call" />
       </div>
     </Dialog>
+  );
+}
+
+/** Opens the bot's chat in Rakazo in a new tab of the same browser. */
+export function ChatLink({ url, name, label = "Open chat" }: { url: string; name: string; label?: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${label} with ${name} in Rakazo (opens in a new tab)`}
+      className="inline-flex h-7 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-2.5 text-[13px] font-medium text-ink hover:bg-sunken"
+    >
+      {label}
+      <ExternalLink size={13} aria-hidden />
+    </a>
   );
 }
