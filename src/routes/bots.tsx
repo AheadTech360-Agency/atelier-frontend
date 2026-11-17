@@ -163,7 +163,7 @@ function EditBot({ agent, onClose }: { agent: Agent; onClose: () => void }) {
           autoComplete="off"
           value={webhook}
           onChange={(e) => setWebhook(e.target.value)}
-          placeholder="seo-lead@bots.rakazo.com"
+          placeholder="seo-lead@rakazobot.com"
           hint="From the Email trigger on the bot's routine in Rakazo. Atelier emails it when you decide one of its items, and for Run now."
         />
         <TextField
