@@ -131,6 +131,10 @@ const metricPoints = (clientId: string) =>
     source: "gsc", metric: "clicks", dimension: "", value: (clientId === NORTHLINE ? 18 : 9) + ((i * 7) % 11), observed_on: day(27 - i),
   }));
 
+const demoKeys: { id: string; agent_id: string | null; label: string; key_prefix: string; client_ids: string[] | null; created_at: string; last_used_at: string | null; revoked_at: string | null }[] = [
+  { id: "k1", agent_id: null, label: "Rakazo", key_prefix: "atl_7Qx", client_ids: [NORTHLINE], created_at: new Date(Date.now() - 20 * 86_400_000).toISOString(), last_used_at: new Date().toISOString(), revoked_at: null },
+];
+
 export async function demoRequest(method: string, path: string, query: Record<string, unknown> = {}): Promise<unknown> {
   await new Promise((r) => setTimeout(r, 120));
   if (method === "POST" && path === "/research/bulk") {
@@ -140,6 +144,10 @@ export async function demoRequest(method: string, path: string, query: Record<st
       keyword, search_volume: Math.max(90, 24_000 - keyword.length * 610 - i * 830), cpc: Math.round((0.6 + (i % 5) * 0.45) * 100) / 100,
       competition: ((i * 17) % 90) / 100 + 0.05, difficulty: 12 + ((keyword.length * 7 + i * 11) % 70), intent: intents[i % intents.length],
     }));
+  }
+  if (method === "PATCH" && path.startsWith("/agent-keys/")) {
+    demoKeys[0].client_ids = (query as { client_ids?: string[] | null }).client_ids ?? null;
+    return demoKeys[0];
   }
   if (method !== "GET") return {};
   const q = query as Record<string, string | undefined>;
@@ -253,6 +261,7 @@ export async function demoRequest(method: string, path: string, query: Record<st
   }
   if (path === "/usage") return { days: 30, by_bot: [], by_client: [] };
   if (path === "/notifications") return { slack_configured: false, digest_hour_utc: 13, dashboard_url_set: true };
+  if (path === "/agent-keys") return demoKeys;
   if (path === "/team") return [{ user_id: "demo", email: "reviewer@aheadtech360.com", full_name: null, role: "admin", created_at: at(40 * D) }];
   if (path === "/research/status") return { configured: true, calls_today: 14, daily_limit: 300 };
   const seoKw = ["linen pants women", "wide leg linen trousers", "summer linen set", "linen shirt dress", "best travel pants",
