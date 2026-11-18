@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Area, AreaChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api } from "@/lib/api";
-import { ErrorNote, Panel, Skeleton } from "../ui";
+import { ApiError, api } from "@/lib/api";
+import { Button, ErrorNote, Panel, Skeleton, errorText, useToast } from "../ui";
 import { ConnectDataForSeo, change, num, pct, pos, useResearchStatus } from "../seo";
 import type { ClientKpis } from "@/api-types/ClientKpis";
 import type { GscRow } from "@/api-types/GscRow";
@@ -103,21 +103,43 @@ export function GrowthSection({ clientId, domain }: { clientId: string; domain: 
     queryFn: () => api.get<Competitor[]>(`/clients/${clientId}/competitors`, { include_ignored: false }),
   });
   const rivals = (comps.data ?? []).slice(0, 3).map((c) => c.domain);
+  // Only saved data loads on its own: opening a client never buys anything. Load/Update buys it.
   const trends = useQuery({
     queryKey: ["research", "trends", domain],
-    queryFn: () => api.get<DomainTrends>("/research/trends", { target: domain }),
+    queryFn: async () => {
+      try {
+        return await api.get<DomainTrends>("/research/trends", { target: domain, saved_only: true });
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      }
+    },
     enabled: on,
-    staleTime: 3_600_000,
     retry: false,
   });
   const targets = [domain, ...rivals].join(",");
   const compare = useQuery({
     queryKey: ["research", "compare", targets],
-    queryFn: () => api.get<TrafficSeries[]>("/research/compare", { targets }),
+    queryFn: () => api.get<TrafficSeries[]>("/research/compare", { targets, saved_only: true }),
     enabled: on && comps.isSuccess,
-    staleTime: 3_600_000,
     retry: false,
   });
+  const qc = useQueryClient();
+  const toast = useToast();
+  const buy = useMutation({
+    mutationFn: async (refresh: boolean) => {
+      const [t, c] = await Promise.all([
+        api.get<DomainTrends>("/research/trends", { target: domain, refresh }),
+        api.get<TrafficSeries[]>("/research/compare", { targets, refresh }),
+      ]);
+      qc.setQueryData(["research", "trends", domain], t);
+      qc.setQueryData(["research", "compare", targets], c);
+    },
+    onSuccess: () => toast("Growth data saved"),
+    onError: (e) => toast(errorText(e), "error"),
+  });
+  const missing = trends.isSuccess && (!trends.data || (compare.data ?? []).length < targets.split(",").length);
+  const savedAt = trends.data?.fetched_at;
 
   if (status.isLoading) return null;
   if (!on)
@@ -138,7 +160,20 @@ export function GrowthSection({ clientId, domain }: { clientId: string; domain: 
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-[15px] font-semibold">Growth over time</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-[15px] font-semibold">Growth over time</h2>
+        <div className="flex items-center gap-2 text-[12px] text-ink-3">
+          {savedAt ? <span>Saved {new Date(savedAt).toLocaleDateString([], { day: "numeric", month: "short" })}. Opening it is free.</span> : null}
+          <Button size="sm" busy={buy.isPending} onClick={() => buy.mutate(!missing)} title="Buys data from DataForSEO (paid, a few cents)">
+            {missing ? "Load growth data" : "Update"}
+          </Button>
+        </div>
+      </div>
+      {trends.isSuccess && !trends.data ? (
+        <p className="rounded-lg border border-line bg-surface px-4 py-3 text-[13px] text-ink-2">
+          Not loaded yet. Load growth data buys it once from DataForSEO and saves it, so it stays free after that.
+        </p>
+      ) : null}
       {trends.error ? <ErrorNote error={trends.error} /> : null}
       {trends.data?.errors.length ? (
         <p className="rounded-lg border border-p2/30 bg-p2-soft px-4 py-2 text-[13px] text-p2">Some data didn't load: {trends.data.errors.join(" · ")}</p>

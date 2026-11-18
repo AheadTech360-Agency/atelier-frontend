@@ -5,4 +5,8 @@ export type BacklinkOverview = { target: string, backlinks: number | null, refer
 /**
  * DataForSEO domain rank, 0 to 1000.
  */
-rank: number | null, broken_backlinks: number | null, dofollow_share: number | null, top_referring: Array<ReferringDomain>, errors: Array<string>, fetched_at: string, };
+rank: number | null, broken_backlinks: number | null, dofollow_share: number | null, top_referring: Array<ReferringDomain>, errors: Array<string>, fetched_at: string, 
+/**
+ * What DataForSEO charged for this lookup, USD (none when it reported no cost).
+ */
+cost_usd: number | null, };

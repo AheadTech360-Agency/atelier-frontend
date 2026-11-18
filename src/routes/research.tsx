@@ -165,8 +165,37 @@ function PartErrors({ errors }: { errors: string[] }) {
   );
 }
 
-function Fetched({ at }: { at: string }) {
-  return <p className="text-[12px] text-ink-3">Data from DataForSEO, {new Date(at).toLocaleString()}. Cached for 24 hours.</p>;
+const cost = (v: number | null | undefined) => (v == null ? null : `$${v < 0.01 ? v.toFixed(4) : v.toFixed(3)}`);
+
+/** When a result was bought and what it cost. It stays saved; Update buys a fresh copy. */
+function Saved({ at, costUsd, onUpdate, busy }: { at: string | null | undefined; costUsd?: number | null; onUpdate?: () => void; busy?: boolean }) {
+  return (
+    <div className="flex items-center gap-2 text-[12px] text-ink-3">
+      <span>
+        {at ? `Saved ${new Date(at).toLocaleString([], { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}` : "Saved"}
+        {cost(costUsd) ? `, cost ${cost(costUsd)}` : ""}. Opening it again is free.
+      </span>
+      {onUpdate ? (
+        <Button size="sm" busy={busy} onClick={onUpdate} title="Buys fresh data from DataForSEO (paid)">
+          Update
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Buy a fresh copy of a saved lookup and show it in place. */
+function useUpdate<T>(key: unknown[], path: string, params: Record<string, unknown>) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: () => api.get<T>(path, { ...params, refresh: true }),
+    onSuccess: (data) => {
+      qc.setQueryData(key, data);
+      toast("Updated with fresh data");
+    },
+    onError: (e) => toast(errorText(e), "error"),
+  });
 }
 
 function Empty({ children }: { children: ReactNode }) {
@@ -184,6 +213,7 @@ export function DomainResearchPage() {
   const { clientScope } = useSession();
   const clients = useClients();
   const fallback = clients.data?.find((x) => x.id === clientScope)?.domain ?? "";
+  const update = useUpdate<DomainOverview>(["research", "domain", d, country], "/research/domain", { target: d, location_code: country });
   const q = useQuery({
     queryKey: ["research", "domain", d, country],
     queryFn: () => api.get<DomainOverview>("/research/domain", { target: d, location_code: country }),
@@ -210,14 +240,19 @@ export function DomainResearchPage() {
         ) : q.error ? (
           <ErrorNote error={q.error} />
         ) : q.data ? (
-          <DomainReport data={q.data} clientId={target.id} clientName={target.name} />
+          <DomainReport
+            data={q.data}
+            clientId={target.id}
+            clientName={target.name}
+            saved={<Saved at={q.data.fetched_at} costUsd={q.data.cost_usd} onUpdate={() => update.mutate()} busy={update.isPending} />}
+          />
         ) : null}
       </div>
     </div>
   );
 }
 
-function DomainReport({ data: o, clientId, clientName }: { data: DomainOverview; clientId: string; clientName?: string }) {
+function DomainReport({ data: o, clientId, clientName, saved }: { data: DomainOverview; clientId: string; clientName?: string; saved: ReactNode }) {
   const [tab, setTab] = useState("keywords");
   const [sort, setSort] = useState({ key: "traffic", desc: true });
   const toast = useToast();
@@ -244,7 +279,7 @@ function DomainReport({ data: o, clientId, clientName }: { data: DomainOverview;
           <Link to="/research/backlinks" search={{ d: o.domain }} className="text-[13px] text-denim hover:underline">
             Backlinks for {o.domain}
           </Link>
-          <Fetched at={o.fetched_at} />
+          {saved}
         </div>
       </div>
       <PartErrors errors={o.errors} />
@@ -415,6 +450,7 @@ export function KeywordResearchPage() {
   const navigate = useNavigate({ from: "/research/keywords" });
   const country = c ? Number(c) : 2840;
   const status = useResearchStatus();
+  const update = useUpdate<KeywordOverview>(["research", "keyword", k, country], "/research/keyword", { keyword: k, location_code: country });
   const q = useQuery({
     queryKey: ["research", "keyword", k, country],
     queryFn: () => api.get<KeywordOverview>("/research/keyword", { keyword: k, location_code: country }),
@@ -440,14 +476,19 @@ export function KeywordResearchPage() {
         ) : q.error ? (
           <ErrorNote error={q.error} />
         ) : q.data ? (
-          <KeywordReport data={q.data} clientId={target.id} clientName={target.name} />
+          <KeywordReport
+            data={q.data}
+            clientId={target.id}
+            clientName={target.name}
+            saved={<Saved at={q.data.fetched_at} costUsd={q.data.cost_usd} onUpdate={() => update.mutate()} busy={update.isPending} />}
+          />
         ) : null}
       </div>
     </div>
   );
 }
 
-function KeywordReport({ data: o, clientId, clientName }: { data: KeywordOverview; clientId: string; clientName?: string }) {
+function KeywordReport({ data: o, clientId, clientName, saved }: { data: KeywordOverview; clientId: string; clientName?: string; saved: ReactNode }) {
   const [tab, setTab] = useState("suggestions");
   const [filter, setFilter] = useState("");
   const [sort, setSort] = useState({ key: "search_volume", desc: true });
@@ -462,7 +503,7 @@ function KeywordReport({ data: o, clientId, clientName }: { data: KeywordOvervie
         <h2 className="text-[20px] font-semibold">{o.keyword}</h2>
         <div className="flex items-center gap-3">
           <AddKeyword clientId={clientId} clientName={clientName} keyword={o.keyword} intent={o.intent} wide />
-          <Fetched at={o.fetched_at} />
+          {saved}
         </div>
       </div>
       <PartErrors errors={o.errors} />
@@ -582,6 +623,7 @@ export function BacklinksPage() {
   const { clientScope } = useSession();
   const clients = useClients();
   const fallback = clients.data?.find((x) => x.id === clientScope)?.domain ?? "";
+  const update = useUpdate<BacklinkOverview>(["research", "backlinks", d], "/research/backlinks", { target: d });
   const q = useQuery({
     queryKey: ["research", "backlinks", d],
     queryFn: () => api.get<BacklinkOverview>("/research/backlinks", { target: d }),
@@ -603,7 +645,7 @@ export function BacklinksPage() {
           <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-[20px] font-semibold">{q.data.target}</h2>
-              <Fetched at={q.data.fetched_at} />
+              <Saved at={q.data.fetched_at} costUsd={q.data.cost_usd} onUpdate={() => update.mutate()} busy={update.isPending} />
             </div>
             <PartErrors errors={q.data.errors} />
             <StatGrid cols={5}>
@@ -673,9 +715,10 @@ export function BulkAnalysisPage() {
   const [sort, setSort] = useState({ key: "search_volume", desc: true });
   const keywords = [...new Set(text.split(/\n|,/).map((k) => k.trim().toLowerCase()).filter(Boolean))];
   const run = useMutation({
-    mutationFn: () => api.post<BulkKeyword[]>("/research/bulk", { keywords, location_code: country }),
+    mutationFn: (refresh: boolean) => api.post<BulkKeyword[]>("/research/bulk", { keywords, location_code: country, refresh }),
     onSuccess: () => setPicked(new Set()),
   });
+  const fromSaved = (run.data ?? []).filter((r) => r.from_saved).length;
   const save = useMutation({
     mutationFn: async () => {
       let added = 0;
@@ -731,7 +774,7 @@ export function BulkAnalysisPage() {
                 variant="primary"
                 busy={run.isPending}
                 disabled={!keywords.length || keywords.length > 200 || !status.data?.configured}
-                onClick={() => run.mutate()}
+                onClick={() => run.mutate(false)}
               >
                 Analyze {keywords.length ? `${keywords.length} ${keywords.length === 1 ? "keyword" : "keywords"}` : ""}
               </Button>
@@ -747,6 +790,14 @@ export function BulkAnalysisPage() {
             actions={
               target.id ? (
                 <div className="flex flex-wrap items-center gap-2">
+                  {fromSaved ? (
+                    <span className="text-[12px] text-ink-3">
+                      {fromSaved} saved before (free), {rows.length - fromSaved} bought now.{" "}
+                      <button type="button" className="text-denim hover:underline" disabled={run.isPending} onClick={() => run.mutate(true)}>
+                        Update all
+                      </button>
+                    </span>
+                  ) : null}
                   <Input aria-label="List name (optional)" placeholder="List name (optional)" value={list} onChange={(e) => setList(e.target.value)} className="h-8 w-44" />
                   <Button size="sm" variant="primary" disabled={!picked.size} busy={save.isPending} onClick={() => save.mutate()}>
                     Add {picked.size || ""} to {target.name ?? "client"}

@@ -16,4 +16,8 @@ traffic_value: number | null, pos_1: number | null, pos_2_3: number | null, pos_
 /**
  * Parts that couldn't be loaded, in plain words.
  */
-errors: Array<string>, fetched_at: string, };
+errors: Array<string>, fetched_at: string, 
+/**
+ * What DataForSEO charged for this lookup, USD (none when it reported no cost).
+ */
+cost_usd: number | null, };

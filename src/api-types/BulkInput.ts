@@ -4,4 +4,8 @@ export type BulkInput = {
 /**
  * Up to 200 keywords.
  */
-keywords: Array<string>, location_code: bigint | null, };
+keywords: Array<string>, location_code: bigint | null, 
+/**
+ * true: buy fresh numbers for every keyword, even saved ones.
+ */
+refresh?: boolean, };

@@ -4,4 +4,12 @@ export type BulkKeyword = { keyword: string, search_volume: number | null, cpc: 
 /**
  * Paid competition, 0 to 1.
  */
-competition: number | null, difficulty: number | null, intent: string | null, };
+competition: number | null, difficulty: number | null, intent: string | null, 
+/**
+ * When this keyword's numbers were bought (saved copies keep their date).
+ */
+fetched_at: string | null, 
+/**
+ * True when it came from the saved copy, at no cost.
+ */
+from_saved: boolean, };

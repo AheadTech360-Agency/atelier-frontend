@@ -23,4 +23,8 @@ related: Array<KeywordIdea>,
 /**
  * Suggestions phrased as questions.
  */
-questions: Array<KeywordIdea>, errors: Array<string>, fetched_at: string, };
+questions: Array<KeywordIdea>, errors: Array<string>, fetched_at: string, 
+/**
+ * What DataForSEO charged for this lookup, USD (none when it reported no cost).
+ */
+cost_usd: number | null, };

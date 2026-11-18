@@ -10,4 +10,8 @@ organic: Array<OrganicMonth>,
 /**
  * Backlinks, referring domains and domain rank per month.
  */
-links: Array<LinkMonth>, errors: Array<string>, fetched_at: string, };
+links: Array<LinkMonth>, errors: Array<string>, fetched_at: string, 
+/**
+ * What DataForSEO charged for this lookup, USD (none when it reported no cost).
+ */
+cost_usd: number | null, };
