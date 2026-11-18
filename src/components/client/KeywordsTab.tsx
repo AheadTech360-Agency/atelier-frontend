@@ -62,19 +62,20 @@ function CompetitorsPanel({ clientId, picked, onPick }: { clientId: string; pick
     },
     onError: (e) => toast(errorText(e), "error"),
   });
-  const findNow = useMutation({
-    mutationFn: async () => {
+  // Queue a job for the On-Page Optimizer and wake it. Keywords-only jobs skip the competitor search.
+  const wake = useMutation({
+    mutationFn: async (job: { title: string; payload: Record<string, unknown> }) => {
       await api.post("/tasks", {
         client_id: clientId,
         to_agent: "on_page",
         task_type: "find_competitors",
-        title: "Find competitors and the keywords they rank for",
-        payload: {},
+        title: job.title,
+        payload: job.payload,
         priority: "p3",
         due_at: null,
       });
       try {
-        await api.post(`/agents/on_page/run`, { client_id: clientId, note: "Find competitors and the keywords they rank for." });
+        await api.post(`/agents/on_page/run`, { client_id: clientId, note: `${job.title}.` });
         return "woken";
       } catch {
         return "queued";
@@ -84,6 +85,12 @@ function CompetitorsPanel({ clientId, picked, onPick }: { clientId: string; pick
       toast(r === "woken" ? "The On-Page Optimizer is on it. Results show up here in a few minutes." : "Queued for the On-Page Optimizer's next run."),
     onError: (e) => toast(errorText(e), "error"),
   });
+  const findNow = () => wake.mutate({ title: "Find competitors and the keywords they rank for", payload: {} });
+  const pullKeywords = (domains?: string[]) =>
+    wake.mutate({
+      title: domains?.length === 1 ? `Pull keywords for ${domains[0]}` : "Pull keywords for the saved competitors",
+      payload: { keywords_only: true, ...(domains ? { domains } : {}) },
+    });
 
   const rows = list.data ?? [];
   return (
@@ -97,7 +104,12 @@ function CompetitorsPanel({ clientId, picked, onPick }: { clientId: string; pick
               <Button size="sm" onClick={() => setAdding(true)}>
                 Add competitor
               </Button>
-              <Button size="sm" variant="primary" busy={findNow.isPending} onClick={() => findNow.mutate()}>
+              {rows.length ? (
+                <Button size="sm" busy={wake.isPending && wake.variables?.payload.keywords_only === true && !wake.variables?.payload.domains} onClick={() => pullKeywords()}>
+                  Pull keywords
+                </Button>
+              ) : null}
+              <Button size="sm" variant="primary" busy={wake.isPending && !wake.variables?.payload.keywords_only} onClick={findNow}>
                 Find competitors now
               </Button>
             </>
@@ -162,6 +174,11 @@ function CompetitorsPanel({ clientId, picked, onPick }: { clientId: string; pick
                     ) : (
                       <span className="text-ink-3">None yet</span>
                     )}
+                    {canReview && c.status !== "ignored" ? (
+                      <button type="button" className="ml-2 text-[12.5px] text-denim hover:underline" onClick={() => pullKeywords([c.domain])}>
+                        {c.keyword_count ? "Refresh" : "Pull"}
+                      </button>
+                    ) : null}
                     {c.keywords_pulled_at ? <p className="text-[12.5px] text-ink-3">Pulled {ago(c.keywords_pulled_at)}</p> : null}
                   </td>
                   <td className="px-4 py-2.5">
