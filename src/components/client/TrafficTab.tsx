@@ -7,7 +7,8 @@ import { SortTh, num, pct, pos, sortRows } from "../seo";
 import { PERIODS } from "./DashboardTab";
 import type { GscRow } from "@/api-types/GscRow";
 
-const short = (u: string) => u.replace(/^https?:\/\/(www\.)?[^/]+/, "") || "/";
+// Keep the host: www and bare-domain versions of a page are reported separately.
+const short = (u: string) => u.replace(/^https?:\/\//, "");
 
 /** Search Console by query or by page, sortable, the way an SEO tool lists them. */
 export function GscTable({
