@@ -10,6 +10,7 @@ import { TargetKeywordsPanel } from "./TargetKeywordsPanel";
 import { ClientOverviewTab } from "./OverviewTab";
 import { GscTable } from "./TrafficTab";
 import { AiVisibilityCard, GrowthSection, SummaryCard } from "./GrowthPanels";
+import { PageSpeedPanel } from "./PageSpeedPanel";
 import type { ClientKpis } from "@/api-types/ClientKpis";
 
 export const PERIODS = [
@@ -135,6 +136,7 @@ export function DashboardTab({ clientId, domain }: { clientId: string; domain: s
         <GscTable clientId={clientId} kind="pages" days={days} limit={10} title="Top pages" />
       </div>
 
+      <PageSpeedPanel clientId={clientId} />
       <GrowthSection clientId={clientId} domain={domain} />
       <TargetKeywordsPanel clientId={clientId} />
       <ClientOverviewTab clientId={clientId} />

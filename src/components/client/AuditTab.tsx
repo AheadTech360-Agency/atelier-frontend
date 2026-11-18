@@ -5,6 +5,7 @@ import { humanize } from "@/lib/format";
 import { Badge, ErrorNote, Panel, Skeleton, cx } from "../ui";
 import { Gauge, StatCard, StatGrid } from "../seo";
 import { FindingsTab } from "./WorkTabs";
+import { PageSpeedPanel } from "./PageSpeedPanel";
 import type { AuditSummary } from "@/api-types/AuditSummary";
 
 const SEV_TONE: Record<string, "p1" | "p2" | "p3" | "p4" | "neutral"> = { critical: "p1", high: "p2", medium: "p3", low: "p4", info: "neutral" };
@@ -60,6 +61,7 @@ export function AuditTab({ clientId }: { clientId: string }) {
           </Panel>
         </>
       ) : null}
+      <PageSpeedPanel clientId={clientId} />
       <FindingsTab clientId={clientId} findingType={type} />
     </div>
   );

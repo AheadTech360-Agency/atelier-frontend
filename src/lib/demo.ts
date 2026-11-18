@@ -232,6 +232,18 @@ export async function demoRequest(method: string, path: string, query: Record<st
   }
   if (clientOf && path === `/clients/${clientOf}`) return clients.find((c) => c.id === clientOf);
   if (clientOf && path.endsWith("/metric-names")) return [{ source: "gsc", metric: "clicks" }, { source: "gsc", metric: "impressions" }];
+  if (path === "/metrics" && q.source === "pagespeed") {
+    const base: Record<string, Record<string, number>> = {
+      score: { "template:home": 58, "template:collection": 71, "template:product": 49 },
+      lcp: { "template:home": 3.9, "template:collection": 2.8, "template:product": 4.4 },
+      cls: { "template:home": 0.04, "template:collection": 0.12, "template:product": 0.08 },
+      tbt: { "template:home": 420, "template:collection": 260, "template:product": 690 },
+    };
+    const b = base[String(q.metric)] ?? {};
+    const step = q.metric === "score" ? 2 : q.metric === "tbt" ? -25 : q.metric === "lcp" ? -0.1 : -0.005;
+    return Object.entries(b).flatMap(([dimension, v]) =>
+      Array.from({ length: 6 }, (_, i) => ({ source: "pagespeed", metric: q.metric, dimension, value: Math.round((v + step * (i - 5)) * 1000) / 1000, observed_on: day((5 - i) * 7 + 2) })));
+  }
   if (path === "/metrics") return metricPoints(cid ?? NORTHLINE);
   if (clientOf && path.endsWith("/profile")) {
     return { client_id: clientOf, brand_voice: "Plain, warm, practical. Talks about how clothes wear over years.", voice_rules: [], approved_claims: [], banned_terms: [], post_cadence_per_week: 2, autonomy: {}, updated_at: at(D) };
