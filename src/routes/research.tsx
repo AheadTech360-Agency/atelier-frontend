@@ -473,7 +473,11 @@ function KeywordReport({ data: o, clientId, clientName }: { data: KeywordOvervie
         <StatGrid cols={4}>
           <StatCard label="Search volume / month" value={num(o.search_volume)} tone="accent" />
           <StatCard label="Cost per click" value={usd(o.cpc)} />
-          <StatCard label="Paid competition" value={o.competition == null ? "–" : pct(o.competition, 0)} />
+          <StatCard
+            label="Paid difficulty"
+            value={o.competition == null ? "–" : Math.round(o.competition * 100)}
+            hint="0 to 100: how crowded the ads are"
+          />
           <StatCard label="Search intent" value={<span className="text-[18px]"><Intent value={o.intent} /></span>} />
         </StatGrid>
       </div>

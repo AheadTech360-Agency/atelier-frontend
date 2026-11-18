@@ -11,6 +11,7 @@ import {
   KeyRound,
   LayoutGrid,
   LineChart,
+  ListChecks,
   Link2,
   LogOut,
   Megaphone,
@@ -52,6 +53,7 @@ const AGENCY: NavItem[] = [
 /** A client workspace's sections: each is a tab of the client page. */
 export const WORKSPACE: { tab: string; label: string; icon: typeof Bot }[] = [
   { tab: "overview", label: "Dashboard", icon: Gauge },
+  { tab: "actions", label: "Next actions", icon: ListChecks },
   { tab: "traffic", label: "Traffic", icon: LineChart },
   { tab: "keywords", label: "Keywords", icon: KeyRound },
   { tab: "competitors", label: "Competitors", icon: Swords },

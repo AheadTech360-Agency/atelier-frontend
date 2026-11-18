@@ -31,12 +31,14 @@ import { CompetitorsTab, KeywordsTab } from "@/components/client/KeywordsTab";
 import { DashboardTab } from "@/components/client/DashboardTab";
 import { TrafficTab } from "@/components/client/TrafficTab";
 import { AuditTab } from "@/components/client/AuditTab";
+import { ActionsTab } from "@/components/client/ActionsTab";
 import type { Client } from "@/api-types/Client";
 
 // Daily work up front. Setup is done once per client, so it sits under one tab.
 // The same sections as the workspace sidebar; shown as tabs on phones, where the sidebar is a menu.
 const TABS = [
   { id: "overview", label: "Dashboard" },
+  { id: "actions", label: "Next actions" },
   { id: "traffic", label: "Traffic" },
   { id: "keywords", label: "Keywords" },
   { id: "competitors", label: "Competitors" },
@@ -158,6 +160,7 @@ export function ClientPage() {
         {top === "overview" && (
           <DashboardTab clientId={clientId} domain={c.domain} />
         )}
+        {top === "actions" && <ActionsTab clientId={clientId} />}
         {top === "traffic" && <TrafficTab clientId={clientId} />}
         {top === "competitors" && <CompetitorsTab clientId={clientId} />}
         {top === "findings" && <AuditTab clientId={clientId} />}

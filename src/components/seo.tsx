@@ -78,11 +78,11 @@ export function StatGrid({ children, cols = 4 }: { children: ReactNode; cols?: 3
 
 /** Keyword difficulty as an SEO tool shows it: a coloured dot, the number and a word. */
 export function kdBand(kd: number | null | undefined): { label: string; color: string } {
+  // The same bands Ubersuggest uses for SEO difficulty.
   if (kd == null) return { label: "Unknown", color: "var(--color-line-strong)" };
-  if (kd < 30) return { label: "Easy", color: "#2f9e5b" };
-  if (kd < 50) return { label: "Possible", color: "#d6a21e" };
-  if (kd < 70) return { label: "Hard", color: "#e0752d" };
-  return { label: "Very hard", color: "#d23b3b" };
+  if (kd <= 35) return { label: "Easy", color: "#2f9e5b" };
+  if (kd < 70) return { label: "Medium", color: "#e0a21e" };
+  return { label: "Hard", color: "#d23b3b" };
 }
 
 export function Kd({ value, wide = false }: { value: number | null | undefined; wide?: boolean }) {
