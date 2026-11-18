@@ -62,12 +62,12 @@ function CompetitorsPanel({ clientId, picked, onPick }: { clientId: string; pick
     },
     onError: (e) => toast(errorText(e), "error"),
   });
-  // Queue a job for the On-Page Optimizer and wake it. Keywords-only jobs skip the competitor search.
+  // Queue a job for the SEO Lead and wake it. Keywords-only jobs skip the competitor search.
   const wake = useMutation({
     mutationFn: async (job: { title: string; payload: Record<string, unknown> }) => {
       await api.post("/tasks", {
         client_id: clientId,
-        to_agent: "on_page",
+        to_agent: "seo_lead",
         task_type: "find_competitors",
         title: job.title,
         payload: job.payload,
@@ -75,14 +75,14 @@ function CompetitorsPanel({ clientId, picked, onPick }: { clientId: string; pick
         due_at: null,
       });
       try {
-        await api.post(`/agents/on_page/run`, { client_id: clientId, note: `${job.title}.` });
+        await api.post(`/agents/seo_lead/run`, { client_id: clientId, note: `${job.title}.` });
         return "woken";
       } catch {
         return "queued";
       }
     },
     onSuccess: (r) =>
-      toast(r === "woken" ? "The On-Page Optimizer is on it. Results show up here in a few minutes." : "Queued for the On-Page Optimizer's next run."),
+      toast(r === "woken" ? "The SEO Lead is on it. Results show up here in a few minutes." : "Queued for the SEO Lead's next run."),
     onError: (e) => toast(errorText(e), "error"),
   });
   const findNow = () => wake.mutate({ title: "Find competitors and the keywords they rank for", payload: {} });
@@ -124,7 +124,7 @@ function CompetitorsPanel({ clientId, picked, onPick }: { clientId: string; pick
       ) : !rows.length ? (
         <EmptyState
           title="No competitors yet"
-          body="The On-Page Optimizer finds them with DataForSEO on its first run of each month. Press Find competitors now to start sooner, or add one you know."
+          body="The SEO Lead finds them with DataForSEO every week. Press Find competitors now to start sooner, or add one you know."
         />
       ) : (
         <div className="overflow-x-auto">
@@ -241,7 +241,7 @@ function AddCompetitor({ clientId, onClose, onAdded }: { clientId: string; onClo
   const add = useMutation({
     mutationFn: () => api.post<Competitor>(`/clients/${clientId}/competitors`, { domain, name: name || null, notes: null }),
     onSuccess: (c) => {
-      toast(`${c.domain} added. Its keywords come in on the On-Page Optimizer's next competitor run.`);
+      toast(`${c.domain} added. Its keywords come in on the SEO Lead's next competitor run.`);
       onAdded();
       onClose();
     },
@@ -335,7 +335,7 @@ function CompetitorKeywordsPanel({ clientId, picked, onPick }: { clientId: strin
           body={
             search || minVolume || picked
               ? "Try a different search or filter."
-              : "Once competitors are found, the On-Page Optimizer pulls the top 100 keywords each one ranks for."
+              : "Once competitors are found, the SEO Lead pulls the top 100 keywords each one ranks for."
           }
         />
       ) : (

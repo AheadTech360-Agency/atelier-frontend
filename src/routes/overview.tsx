@@ -151,6 +151,16 @@ export function OverviewPage() {
                       ) : (
                         <span className="block text-[12px] text-ink-3">{c.domain}</span>
                       )}
+                      {c.suggested_keywords > 0 ? (
+                        <Link
+                          to="/clients/$clientId"
+                          params={{ clientId: c.client_id }}
+                          search={{ tab: "overview" }}
+                          className="block text-[12px] text-denim hover:underline"
+                        >
+                          {c.suggested_keywords} {c.suggested_keywords === 1 ? "keyword" : "keywords"} to review
+                        </Link>
+                      ) : null}
                     </td>
                     <td className="px-2 text-right">{c.open_human_required}</td>
                     <td className="px-2 text-right">{c.open_findings}</td>

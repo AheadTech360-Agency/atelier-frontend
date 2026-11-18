@@ -159,7 +159,7 @@ export async function demoRequest(method: string, path: string, query: Record<st
       clients: clients.map((c) => ({
         client_id: c.id, name: c.name, domain: c.domain, status: c.status,
         open_human_required: openItems.filter((i) => i.client_id === c.id).length,
-        open_findings: c.id === NORTHLINE ? findings.length : 0, connections_with_problems: c.id === MARLOW ? 1 : 0,
+        open_findings: c.id === NORTHLINE ? findings.length : 0, connections_with_problems: c.id === MARLOW ? 1 : 0, suggested_keywords: c.id === NORTHLINE ? 3 : 0,
         last_run_at: runs.find((r) => r.client_id === c.id)?.started_at ?? null,
       })),
       open_counts: [...counts].map(([k, v]) => ({ client_id: k.split("|")[0], category: k.split("|")[1], n: v })),
@@ -234,6 +234,21 @@ export async function demoRequest(method: string, path: string, query: Record<st
   if (path === "/usage") return { days: 30, by_bot: [], by_client: [] };
   if (path === "/notifications") return { slack_configured: false, digest_hour_utc: 13, dashboard_url_set: true };
   if (path === "/team") return [{ user_id: "demo", email: "reviewer@aheadtech360.com", full_name: null, role: "admin", created_at: at(40 * D) }];
+  if (clientOf && path.endsWith("/target-keywords")) {
+    const rows = [
+      ["linen pants women", 22000, 34, "commercial", "p1", "suggested", ["vuori.com"], "Vuori ranks #1; we sell three linen cuts"],
+      ["wide leg linen trousers", 20100, 38, "commercial", "p2", "approved", ["outdoorvoices.com"], ""],
+      ["how to wash linen", 9900, 12, "informational", "p3", "suggested", ["vuori.com", "outdoorvoices.com"], "Guide post"],
+      ["summer linen set", 18200, 41, "transactional", "p2", "suggested", ["vuori.com"], ""],
+      ["linen shirt dress", 16300, 45, "commercial", "p3", "rejected", ["outdoorvoices.com"], ""],
+    ].map(([keyword, v, d, intent, priority, status, competitors, notes], i) => ({
+      id: `tk-${i}`, client_id: clientOf, keyword, search_volume: v, difficulty: d, intent, priority, status, competitors, notes,
+      agent_id: "seo_lead", updated_at: at(2 * D),
+    }));
+    const want = (q.status ?? "suggested,approved").split(",");
+    const s = (q.search ?? "").toLowerCase();
+    return page(rows.filter((r) => want.includes(r.status as string) && (r.keyword as string).includes(s)));
+  }
   if (clientOf && path.endsWith("/competitors")) {
     return [
       ["vuori.com", "Vuori", "confirmed", 412, 18_900, 1_240_000, 100],
@@ -241,7 +256,7 @@ export async function demoRequest(method: string, path: string, query: Record<st
       ["girlfriend.com", "", "suggested", 164, 6_100, 145_000, 0],
     ].map(([domain, name, status, shared, all, traffic, kw], i) => ({
       id: `comp-${i}`, client_id: clientOf, domain, name, status, shared_keywords: shared, organic_keywords: all,
-      organic_traffic: traffic, notes: "", agent_id: "on_page", keywords_pulled_at: kw ? at(3 * D) : null, keyword_count: kw, updated_at: at(3 * D),
+      organic_traffic: traffic, notes: "", agent_id: "seo_lead", keywords_pulled_at: kw ? at(3 * D) : null, keyword_count: kw, updated_at: at(3 * D),
     }));
   }
   if (clientOf && path.endsWith("/competitor-keywords")) {
