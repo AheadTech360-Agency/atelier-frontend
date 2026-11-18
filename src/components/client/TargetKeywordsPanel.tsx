@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { usePagedList } from "@/lib/paged";
 import { useSession } from "@/lib/session";
@@ -25,6 +25,9 @@ import {
 } from "../ui";
 import { Intent, Kd } from "../seo";
 import type { TargetKeyword } from "@/api-types/TargetKeyword";
+import type { KeywordList } from "@/api-types/KeywordList";
+
+const parseLists = (t: string) => [...new Set(t.split(",").map((x) => x.trim()).filter(Boolean))];
 
 const fmt = new Intl.NumberFormat("en-US");
 const INTENTS = ["informational", "commercial", "transactional", "navigational", "local", "unknown"];
@@ -43,10 +46,13 @@ export function TargetKeywordsPanel({ clientId }: { clientId: string }) {
   const toast = useToast();
   const [view, setView] = useState(VIEWS[0].id);
   const [search, setSearch] = useState("");
+  const [list, setList] = useState("");
+  const lists = useQuery({ queryKey: ["target-keywords", clientId, "lists"], queryFn: () => api.get<KeywordList[]>(`/clients/${clientId}/keyword-lists`) });
   const [editing, setEditing] = useState<TargetKeyword | "new" | null>(null);
   const q = usePagedList<TargetKeyword>(["target-keywords", clientId], `/clients/${clientId}/target-keywords`, {
     status: view,
     search: search.trim() || undefined,
+    list: list || undefined,
   });
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["target-keywords", clientId] });
@@ -71,6 +77,16 @@ export function TargetKeywordsPanel({ clientId }: { clientId: string }) {
               </option>
             ))}
           </Select>
+          {lists.data?.length ? (
+            <Select aria-label="Keyword list" value={list} onChange={(e) => setList(e.target.value)} className="h-8 w-auto">
+              <option value="">All lists</option>
+              {lists.data.map((l) => (
+                <option key={l.name} value={l.name}>
+                  {l.name} ({l.keywords})
+                </option>
+              ))}
+            </Select>
+          ) : null}
           {canReview ? (
             <Button size="sm" onClick={() => setEditing("new")}>
               Add keyword
@@ -88,9 +104,9 @@ export function TargetKeywordsPanel({ clientId }: { clientId: string }) {
         <ErrorNote error={q.error} />
       ) : !q.items.length ? (
         <EmptyState
-          title={search || view !== VIEWS[0].id ? "Nothing here" : "No target keywords yet"}
+          title={search || list || view !== VIEWS[0].id ? "Nothing here" : "No target keywords yet"}
           body={
-            search || view !== VIEWS[0].id
+            search || list || view !== VIEWS[0].id
               ? "Try another search or list."
               : "The SEO Lead suggests them after its weekly competitor research. You can add your own now."
           }
@@ -113,7 +129,20 @@ export function TargetKeywordsPanel({ clientId }: { clientId: string }) {
               {q.items.map((k) => (
                 <tr key={k.id} className={cx("align-top", k.status === "rejected" && "text-ink-3")}>
                   <td className="px-4 py-2.5">
-                    <p className="font-medium">{k.keyword}</p>
+                    <p className="font-medium">
+                      {k.keyword}
+                      {k.lists.map((l) => (
+                        <button
+                          key={l}
+                          type="button"
+                          onClick={() => setList(l)}
+                          className="ml-1.5 rounded-full border border-line px-2 py-px align-middle text-[11.5px] font-normal text-ink-2 hover:border-denim hover:text-denim"
+                          title={`Show the ${l} list`}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </p>
                     <p className="max-w-[60ch] text-[12.5px] text-ink-3">
                       {k.agent_id ? `Suggested by ${agentName(k.agent_id, true)}` : "Added or edited by a person"}
                       {k.competitors.length ? `. Competitors ranking: ${k.competitors.join(", ")}` : ""}
@@ -180,11 +209,12 @@ function EditKeyword({
   const [intent, setIntent] = useState(item?.intent ?? "unknown");
   const [priority, setPriority] = useState(item?.priority ?? "p3");
   const [notes, setNotes] = useState(item?.notes ?? "");
+  const [lists, setLists] = useState((item?.lists ?? []).join(", "));
   const save = useMutation({
     mutationFn: () =>
       item
-        ? api.patch<TargetKeyword>(`/target-keywords/${item.id}`, { keyword, intent, priority, notes, status: null })
-        : api.post<TargetKeyword>(`/clients/${clientId}/target-keywords`, { keyword, intent, priority, notes }),
+        ? api.patch<TargetKeyword>(`/target-keywords/${item.id}`, { keyword, intent, priority, notes, lists: parseLists(lists), status: null })
+        : api.post<TargetKeyword>(`/clients/${clientId}/target-keywords`, { keyword, intent, priority, notes, lists: parseLists(lists) }),
     onSuccess: () => {
       toast(item ? "Keyword saved" : "Keyword added. The bots will work on it from their next run.");
       onSaved();
@@ -249,6 +279,9 @@ function EditKeyword({
             </Select>
           </Field>
         </div>
+        <Field label="Lists" hint="Group keywords, for example: Summer launch, Blog ideas. Separate with commas">
+          <Input value={lists} onChange={(e) => setLists(e.target.value)} />
+        </Field>
         <Field label="Notes for the bots" hint="Why it matters, or which page should rank for it">
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-20" />
         </Field>

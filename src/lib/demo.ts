@@ -133,6 +133,14 @@ const metricPoints = (clientId: string) =>
 
 export async function demoRequest(method: string, path: string, query: Record<string, unknown> = {}): Promise<unknown> {
   await new Promise((r) => setTimeout(r, 120));
+  if (method === "POST" && path === "/research/bulk") {
+    const kws = ((query as { keywords?: string[] }).keywords ?? []).slice(0, 200);
+    const intents = ["commercial", "transactional", "informational", "commercial", "navigational"];
+    return kws.map((keyword, i) => ({
+      keyword, search_volume: Math.max(90, 24_000 - keyword.length * 610 - i * 830), cpc: Math.round((0.6 + (i % 5) * 0.45) * 100) / 100,
+      competition: ((i * 17) % 90) / 100 + 0.05, difficulty: 12 + ((keyword.length * 7 + i * 11) % 70), intent: intents[i % intents.length],
+    }));
+  }
   if (method !== "GET") return {};
   const q = query as Record<string, string | undefined>;
   const cid = q.client_id;
@@ -309,11 +317,11 @@ export async function demoRequest(method: string, path: string, query: Record<st
       ["linen shirt dress", 16300, 45, "commercial", "p3", "rejected", ["outdoorvoices.com"], ""],
     ].map(([keyword, v, d, intent, priority, status, competitors, notes], i) => ({
       id: `tk-${i}`, client_id: clientOf, keyword, search_volume: v, difficulty: d, intent, priority, status, competitors, notes,
-      agent_id: "seo_lead", updated_at: at(2 * D),
+      agent_id: "seo_lead", updated_at: at(2 * D), lists: i < 2 || i === 3 ? ["Summer launch"] : i === 2 ? ["Blog ideas"] : [],
     }));
     const want = (q.status ?? "suggested,approved").split(",");
     const s = (q.search ?? "").toLowerCase();
-    return page(rows.filter((r) => want.includes(r.status as string) && (r.keyword as string).includes(s)));
+    return page(rows.filter((r) => want.includes(r.status as string) && (r.keyword as string).includes(s) && (!q.list || r.lists.includes(q.list))));
   }
   if (clientOf && path.endsWith("/competitors")) {
     return [
@@ -336,6 +344,55 @@ export async function demoRequest(method: string, path: string, query: Record<st
     const s = (q.search ?? "").toLowerCase();
     return page(rows.filter((r) => (!q.competitor_id || r.competitor_id === q.competitor_id) && r.keyword.includes(s)
       && r.search_volume >= Number(q.min_volume ?? 0)));
+  }
+  if (clientOf && path.endsWith("/keyword-lists")) {
+    return [{ name: "Summer launch", keywords: 3, volume: 60_300 }, { name: "Blog ideas", keywords: 1, volume: 9_900 }];
+  }
+  if (clientOf && path.endsWith("/rankings")) {
+    const kws = [
+      ["linen pants women", 22000, "p1", 8.4, 11.2, 6.9, 210, 9800],
+      ["wide leg linen trousers", 20100, "p2", 4.1, 4.6, 3.2, 340, 7100],
+      ["how to wash linen", 9900, "p3", 2.3, 2.9, 1.8, 520, 6400],
+      ["summer linen set", 18200, "p2", 17.6, 14.9, 12.0, 22, 3100],
+      ["linen co ord set", 8100, "p3", 34.0, null, 31.5, 3, 640],
+      ["linen shorts women", 12100, "p3", null, null, null, null, null],
+    ].map(([keyword, search_volume, priority, position, previous, best, clicks, impressions], i) => ({
+      id: `tk-${i}`, keyword, status: "approved", priority, search_volume, position, previous, best, clicks, impressions,
+    }));
+    const weeks = Array.from({ length: 12 }, (_, i) => ({ week: day((11 - i) * 7 + 3), top3: 1 + Math.floor(i / 5), top10: 1 + Math.floor(i / 4), top100: 2 + (i % 2) }));
+    return { keywords: kws, weeks };
+  }
+  if (clientOf && path.endsWith("/ai-visibility")) {
+    return [
+      { engine: "ai_overviews", citation_share: 0.18, mentions: 9, observed_on: day(6) },
+      { engine: "chatgpt", citation_share: 0.12, mentions: 6, observed_on: day(6) },
+      { engine: "gemini", citation_share: 0.08, mentions: 4, observed_on: day(6) },
+      { engine: "ai_mode", citation_share: 0.1, mentions: 5, observed_on: day(6) },
+    ];
+  }
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now);
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() - 11 + i);
+    return d.toISOString().slice(0, 7);
+  });
+  if (path === "/research/trends") {
+    return {
+      domain: q.target, fetched_at: at(0),
+      organic: months.map((month, i) => ({
+        month, traffic: 2400 + i * 260 + (i % 3) * 120, keywords: 1900 + i * 140,
+        pos_1_3: 60 + i * 9, pos_4_10: 180 + i * 16, pos_11_50: 820 + i * 60, pos_51_100: 840 + i * 55,
+      })),
+      links: months.map((month, i) => ({ month, backlinks: 5200 + i * 310, referring_domains: 610 + i * 22, rank: 212 + i * 4 })),
+      errors: [],
+    };
+  }
+  if (path === "/research/compare") {
+    const base: Record<string, number> = {};
+    return String(q.targets ?? "").split(",").filter(Boolean).map((domain, j) => {
+      base[domain] = [3200, 18_000, 9_000, 6_500][j] ?? 4000;
+      return { domain, error: null, history: months.map((month, i) => ({ month, traffic: Math.round(base[domain] * (0.8 + i * (j === 0 ? 0.06 : 0.02) + (i % 3) * 0.03)), keywords: null })) };
+    });
   }
   if (path === "/outreach/counts") return [];
   return [];

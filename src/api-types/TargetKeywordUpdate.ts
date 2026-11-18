@@ -3,4 +3,8 @@
 /**
  * A person approves, rejects or edits a keyword.
  */
-export type TargetKeywordUpdate = { keyword: string | null, status: string | null, intent: string | null, priority: string | null, notes: string | null, };
+export type TargetKeywordUpdate = { keyword: string | null, 
+/**
+ * Replace the lists it's in.
+ */
+lists: Array<string> | null, status: string | null, intent: string | null, priority: string | null, notes: string | null, };

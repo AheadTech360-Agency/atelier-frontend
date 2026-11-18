@@ -8,4 +8,8 @@ status: string | null,
 /**
  * Part of the keyword.
  */
-search: string | null, };
+search: string | null, 
+/**
+ * Only keywords in this list.
+ */
+list: string | null, };

@@ -27,7 +27,7 @@ function qs(q?: Query): string {
 export const DEMO = import.meta.env.DEV && import.meta.env.VITE_DEMO === "1";
 
 async function request<T>(method: string, path: string, body?: unknown, query?: Query): Promise<T> {
-  if (DEMO) return (await import("./demo")).demoRequest(method, path, query) as Promise<T>;
+  if (DEMO) return (await import("./demo")).demoRequest(method, path, (method === "GET" ? query : body) as Record<string, unknown>) as Promise<T>;
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   const res = await fetch(`${BASE}${path}${qs(query)}`, {

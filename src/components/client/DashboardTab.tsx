@@ -9,6 +9,7 @@ import { Gauge, StatCard, StatGrid, change, num, pct, pos, usd } from "../seo";
 import { TargetKeywordsPanel } from "./TargetKeywordsPanel";
 import { ClientOverviewTab } from "./OverviewTab";
 import { GscTable } from "./TrafficTab";
+import { AiVisibilityCard, GrowthSection, SummaryCard } from "./GrowthPanels";
 import type { ClientKpis } from "@/api-types/ClientKpis";
 
 export const PERIODS = [
@@ -43,6 +44,10 @@ export function DashboardTab({ clientId, domain }: { clientId: string; domain: s
         <ErrorNote error={k.error} />
       ) : k.data ? (
         <>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <SummaryCard clientId={clientId} k={k.data} />
+            <AiVisibilityCard clientId={clientId} />
+          </div>
           <StatGrid cols={6}>
             <StatCard label="Organic clicks" value={num(k.data.clicks.current)} delta={change(k.data.clicks)} tone="accent" />
             <StatCard label="Impressions" value={num(k.data.impressions.current)} delta={change(k.data.impressions)} />
@@ -130,6 +135,7 @@ export function DashboardTab({ clientId, domain }: { clientId: string; domain: s
         <GscTable clientId={clientId} kind="pages" days={days} limit={10} title="Top pages" />
       </div>
 
+      <GrowthSection clientId={clientId} domain={domain} />
       <TargetKeywordsPanel clientId={clientId} />
       <ClientOverviewTab clientId={clientId} />
     </div>

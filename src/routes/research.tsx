@@ -29,6 +29,7 @@ import type { DomainOverview } from "@/api-types/DomainOverview";
 import type { KeywordOverview } from "@/api-types/KeywordOverview";
 import type { KeywordIdea } from "@/api-types/KeywordIdea";
 import type { BacklinkOverview } from "@/api-types/BacklinkOverview";
+import type { BulkKeyword } from "@/api-types/BulkKeyword";
 
 const AXIS = { fontSize: 11, fill: "var(--color-ink-3)" };
 const monthLabel = (m: string) => {
@@ -308,7 +309,7 @@ function DomainReport({ data: o, clientId, clientName }: { data: DomainOverview;
                     <SortTh label="Keyword" k="keyword" sort={sort} setSort={setSort} />
                     <SortTh label="Position" k="position" sort={sort} setSort={setSort} right />
                     <SortTh label="Volume" k="search_volume" sort={sort} setSort={setSort} right />
-                    <SortTh label="SD" k="difficulty" sort={sort} setSort={setSort} />
+                    <SortTh label="Difficulty" k="difficulty" sort={sort} setSort={setSort} />
                     <SortTh label="CPC" k="cpc" sort={sort} setSort={setSort} right />
                     <SortTh label="Est. visits" k="traffic" sort={sort} setSort={setSort} right />
                     <th className="px-3 py-2 font-medium">Intent</th>
@@ -541,7 +542,7 @@ function KeywordReport({ data: o, clientId, clientName }: { data: KeywordOvervie
                 <tr className="border-b border-line">
                   <SortTh label="Keyword" k="keyword" sort={sort} setSort={setSort} />
                   <SortTh label="Volume" k="search_volume" sort={sort} setSort={setSort} right />
-                  <SortTh label="SD" k="difficulty" sort={sort} setSort={setSort} />
+                  <SortTh label="Difficulty" k="difficulty" sort={sort} setSort={setSort} />
                   <SortTh label="CPC" k="cpc" sort={sort} setSort={setSort} right />
                   <th className="px-3 py-2 font-medium">Intent</th>
                   <th className="w-10" />
@@ -653,6 +654,165 @@ export function ResearchLinks({ domain, className }: { domain: string; className
     <div className={cx("flex flex-wrap gap-3 text-[13px]", className)}>
       <Link to="/research/domain" search={{ d: domain }} className="text-denim hover:underline">Domain overview</Link>
       <Link to="/research/backlinks" search={{ d: domain }} className="text-denim hover:underline">Backlinks</Link>
+    </div>
+  );
+}
+
+// Bulk analysis ----------------------------------------------------------------------------------
+
+export function BulkAnalysisPage() {
+  usePageTitle("Bulk analysis");
+  const status = useResearchStatus();
+  const target = useTargetClient();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const [text, setText] = useState("");
+  const [country, setCountry] = useState(2840);
+  const [list, setList] = useState("");
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [sort, setSort] = useState({ key: "search_volume", desc: true });
+  const keywords = [...new Set(text.split(/\n|,/).map((k) => k.trim().toLowerCase()).filter(Boolean))];
+  const run = useMutation({
+    mutationFn: () => api.post<BulkKeyword[]>("/research/bulk", { keywords, location_code: country }),
+    onSuccess: () => setPicked(new Set()),
+  });
+  const save = useMutation({
+    mutationFn: async () => {
+      let added = 0;
+      for (const k of picked) {
+        const row = run.data?.find((r) => r.keyword === k);
+        try {
+          await api.post(`/clients/${target.id}/target-keywords`, {
+            keyword: k,
+            intent: row?.intent && row.intent !== "unknown" ? row.intent : null,
+            priority: null,
+            notes: "Added from bulk analysis",
+            lists: list.trim() ? [list.trim()] : null,
+          });
+          added++;
+        } catch {
+          // Already a target keyword: skip it.
+        }
+      }
+      return added;
+    },
+    onSuccess: (added) => {
+      qc.invalidateQueries({ queryKey: ["target-keywords", target.id] });
+      toast(`${added} added to ${target.name ?? "the client"}'s target keywords${list.trim() ? ` in "${list.trim()}"` : ""}`);
+      setPicked(new Set());
+    },
+  });
+  const rows = sortRows(run.data ?? [], sort);
+  const all = rows.length > 0 && rows.every((r) => picked.has(r.keyword));
+
+  return (
+    <div>
+      <PageHeader title="Bulk analysis" description="Volume, difficulty, cost per click and intent for up to 200 keywords at once." actions={target.picker} />
+      <div className="flex flex-col gap-6 p-4 md:p-6">
+        {status.data && !status.data.configured ? <ConnectDataForSeo /> : null}
+        <Panel title="Keywords">
+          <div className="flex flex-col gap-3 p-4">
+            <textarea
+              aria-label="Keywords, one per line"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={"One keyword per line, for example:\nlinen pants women\nwide leg linen trousers"}
+              className="min-h-40 w-full rounded-md border border-line-strong bg-surface p-3 text-[14px] leading-relaxed outline-none focus:border-denim"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Select aria-label="Country" value={country} onChange={(e) => setCountry(Number(e.target.value))} className="h-9 w-auto">
+                {COUNTRIES.map((x) => (
+                  <option key={x.code} value={x.code}>
+                    {x.label}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                variant="primary"
+                busy={run.isPending}
+                disabled={!keywords.length || keywords.length > 200 || !status.data?.configured}
+                onClick={() => run.mutate()}
+              >
+                Analyze {keywords.length ? `${keywords.length} ${keywords.length === 1 ? "keyword" : "keywords"}` : ""}
+              </Button>
+              {keywords.length > 200 ? <span className="text-[13px] text-p1">Up to 200 at a time.</span> : null}
+            </div>
+            {run.error ? <ErrorNote error={run.error} /> : null}
+          </div>
+        </Panel>
+
+        {run.data ? (
+          <Panel
+            title={`Results (${rows.length})`}
+            actions={
+              target.id ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input aria-label="List name (optional)" placeholder="List name (optional)" value={list} onChange={(e) => setList(e.target.value)} className="h-8 w-44" />
+                  <Button size="sm" variant="primary" disabled={!picked.size} busy={save.isPending} onClick={() => save.mutate()}>
+                    Add {picked.size || ""} to {target.name ?? "client"}
+                  </Button>
+                </div>
+              ) : null
+            }
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13.5px]">
+                <thead className="text-[12.5px] text-ink-3">
+                  <tr className="border-b border-line">
+                    <th className="w-10 px-3 py-2">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all"
+                        checked={all}
+                        onChange={() => setPicked(all ? new Set() : new Set(rows.map((r) => r.keyword)))}
+                      />
+                    </th>
+                    <SortTh label="Keyword" k="keyword" sort={sort} setSort={setSort} />
+                    <SortTh label="Volume" k="search_volume" sort={sort} setSort={setSort} right />
+                    <SortTh label="Difficulty" k="difficulty" sort={sort} setSort={setSort} />
+                    <SortTh label="Paid competition" k="competition" sort={sort} setSort={setSort} right />
+                    <SortTh label="CPC" k="cpc" sort={sort} setSort={setSort} right />
+                    <th className="px-3 py-2 font-medium">Intent</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {rows.map((r) => (
+                    <tr key={r.keyword}>
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${r.keyword}`}
+                          checked={picked.has(r.keyword)}
+                          onChange={() => {
+                            const n = new Set(picked);
+                            if (n.has(r.keyword)) n.delete(r.keyword);
+                            else n.add(r.keyword);
+                            setPicked(n);
+                          }}
+                        />
+                      </td>
+                      <td className="px-3 py-2 font-medium">
+                        <Link to="/research/keywords" search={{ k: r.keyword }} className="hover:underline">
+                          {r.keyword}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{num(r.search_volume)}</td>
+                      <td className="px-3 py-2">
+                        <Kd value={r.difficulty} />
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{r.competition == null ? "–" : Math.round(r.competition * 100)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{usd(r.cpc)}</td>
+                      <td className="px-3 py-2">
+                        <Intent value={r.intent} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        ) : null}
+      </div>
     </div>
   );
 }

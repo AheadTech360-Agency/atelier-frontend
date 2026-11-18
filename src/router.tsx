@@ -17,6 +17,7 @@ import { ReportsPage } from "./routes/reports";
 import { SettingsPage } from "./routes/settings";
 import {
   BacklinksPage,
+  BulkAnalysisPage,
   DomainResearchPage,
   KeywordResearchPage,
 } from "./routes/research";
@@ -110,6 +111,11 @@ const routes = [
     validateSearch: (s: Record<string, unknown>): { d?: string } => ({
       d: str(s.d),
     }),
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/research/bulk",
+    component: BulkAnalysisPage,
   }),
   createRoute({
     getParentRoute: () => rootRoute,

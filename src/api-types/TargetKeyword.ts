@@ -9,6 +9,10 @@ export type TargetKeyword = { id: string, client_id: string, keyword: string, se
  */
 competitors: Array<string>, 
 /**
+ * The keyword lists it's in.
+ */
+lists: Array<string>, 
+/**
  * suggested (picked by a bot), approved (a person agreed) or rejected (never re-suggested).
  */
 status: string, notes: string, 

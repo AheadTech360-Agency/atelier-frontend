@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   LineChart,
   ListChecks,
+  ListPlus,
   Link2,
   LogOut,
   Megaphone,
@@ -25,6 +26,7 @@ import {
   Store,
   Sun,
   Swords,
+  TrendingUp,
   X,
 } from "lucide-react";
 import { useTheme, type Theme } from "@/lib/theme";
@@ -40,6 +42,7 @@ const TOOLS: NavItem[] = [
   { to: "/research/domain", label: "Domain overview", icon: Globe },
   { to: "/research/keywords", label: "Keyword research", icon: KeyRound },
   { to: "/research/backlinks", label: "Backlinks", icon: Link2 },
+  { to: "/research/bulk", label: "Bulk analysis", icon: ListPlus },
 ];
 const AGENCY: NavItem[] = [
   { to: "/", label: "All clients", icon: LayoutGrid },
@@ -56,6 +59,7 @@ export const WORKSPACE: { tab: string; label: string; icon: typeof Bot }[] = [
   { tab: "actions", label: "Next actions", icon: ListChecks },
   { tab: "traffic", label: "Traffic", icon: LineChart },
   { tab: "keywords", label: "Keywords", icon: KeyRound },
+  { tab: "rankings", label: "Rank tracking", icon: TrendingUp },
   { tab: "competitors", label: "Competitors", icon: Swords },
   { tab: "findings", label: "Site audit", icon: Stethoscope },
   { tab: "content", label: "Content", icon: PenLine },

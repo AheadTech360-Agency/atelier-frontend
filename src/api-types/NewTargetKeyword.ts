@@ -3,4 +3,8 @@
 /**
  * A person adds a keyword. It starts approved.
  */
-export type NewTargetKeyword = { keyword: string, intent: string | null, priority: string | null, notes: string | null, };
+export type NewTargetKeyword = { keyword: string, 
+/**
+ * Lists to put it in.
+ */
+lists: Array<string> | null, intent: string | null, priority: string | null, notes: string | null, };

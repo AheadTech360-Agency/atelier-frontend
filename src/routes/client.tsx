@@ -32,6 +32,7 @@ import { DashboardTab } from "@/components/client/DashboardTab";
 import { TrafficTab } from "@/components/client/TrafficTab";
 import { AuditTab } from "@/components/client/AuditTab";
 import { ActionsTab } from "@/components/client/ActionsTab";
+import { RankTab } from "@/components/client/RankTab";
 import type { Client } from "@/api-types/Client";
 
 // Daily work up front. Setup is done once per client, so it sits under one tab.
@@ -41,6 +42,7 @@ const TABS = [
   { id: "actions", label: "Next actions" },
   { id: "traffic", label: "Traffic" },
   { id: "keywords", label: "Keywords" },
+  { id: "rankings", label: "Rank tracking" },
   { id: "competitors", label: "Competitors" },
   { id: "findings", label: "Site audit" },
   { id: "content", label: "Content" },
@@ -165,6 +167,7 @@ export function ClientPage() {
         {top === "competitors" && <CompetitorsTab clientId={clientId} />}
         {top === "findings" && <AuditTab clientId={clientId} />}
         {top === "keywords" && <KeywordsTab clientId={clientId} />}
+        {top === "rankings" && <RankTab clientId={clientId} />}
         {top === "content" && <ContentTab clientId={clientId} />}
         {top === "outreach" && <OutreachTab clientId={clientId} />}
         {top === "setup" ? (
