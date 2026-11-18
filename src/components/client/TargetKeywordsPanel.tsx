@@ -23,6 +23,7 @@ import {
   errorText,
   useToast,
 } from "../ui";
+import { Intent, Kd } from "../seo";
 import type { TargetKeyword } from "@/api-types/TargetKeyword";
 
 const fmt = new Intl.NumberFormat("en-US");
@@ -120,8 +121,8 @@ export function TargetKeywordsPanel({ clientId }: { clientId: string }) {
                     </p>
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{k.search_volume == null ? "–" : fmt.format(k.search_volume)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{k.difficulty ?? "–"}</td>
-                  <td className="px-3 py-2.5">{k.intent === "unknown" ? <span className="text-ink-3">–</span> : humanize(k.intent)}</td>
+                  <td className="px-3 py-2.5 text-right"><Kd value={k.difficulty} /></td>
+                  <td className="px-3 py-2.5"><Intent value={k.intent} /></td>
                   <td className="px-3 py-2.5">
                     <PriorityBadge p={k.priority} />
                   </td>

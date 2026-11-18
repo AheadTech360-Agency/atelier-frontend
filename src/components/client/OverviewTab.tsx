@@ -21,7 +21,6 @@ import {
   sourceLabel,
 } from "@/lib/format";
 import { EmptyState, Panel, Select, Skeleton, StatusBadge } from "../ui";
-import { TargetKeywordsPanel } from "./TargetKeywordsPanel";
 import type { MetricName } from "@/api-types/MetricName";
 import type { MetricPoint } from "@/api-types/MetricPoint";
 import type { Report } from "@/api-types/Report";
@@ -83,7 +82,6 @@ export function ClientOverviewTab({ clientId }: { clientId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <TargetKeywordsPanel clientId={clientId} />
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Panel
           title="Trend"

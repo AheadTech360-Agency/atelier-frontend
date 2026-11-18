@@ -234,6 +234,72 @@ export async function demoRequest(method: string, path: string, query: Record<st
   if (path === "/usage") return { days: 30, by_bot: [], by_client: [] };
   if (path === "/notifications") return { slack_configured: false, digest_hour_utc: 13, dashboard_url_set: true };
   if (path === "/team") return [{ user_id: "demo", email: "reviewer@aheadtech360.com", full_name: null, role: "admin", created_at: at(40 * D) }];
+  if (path === "/research/status") return { configured: true, calls_today: 14, daily_limit: 300 };
+  const seoKw = ["linen pants women", "wide leg linen trousers", "summer linen set", "linen shirt dress", "best travel pants",
+    "organic cotton joggers", "how to wash linen", "linen shorts women", "breathable work pants", "what is linen made of",
+    "linen co ord set", "lightweight summer dress"];
+  const intents = ["commercial", "transactional", "informational", "commercial"];
+  if (path === "/research/domain") {
+    const d = String(q.target ?? "vuori.com");
+    return {
+      domain: d, location_code: 2840, organic_keywords: 48210, organic_traffic: 1240000, traffic_value: 865000,
+      pos_1: 1820, pos_2_3: 3410, pos_4_10: 7920, pos_11_20: 9100, pos_21_100: 25960,
+      history: Array.from({ length: 18 }, (_, i) => {
+        const dt = new Date(now - (17 - i) * 30 * D);
+        return { month: `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`, traffic: 820000 + i * 26000 + ((i * 37) % 9) * 15000, keywords: 39000 + i * 520 };
+      }),
+      top_keywords: seoKw.map((k, i) => ({ keyword: k, position: 1 + (i % 8), search_volume: 33100 - i * 2400, cpc: 0.6 + i * 0.21,
+        difficulty: 18 + i * 6, intent: intents[i % 4], url: `https://${d}/collections/${k.replace(/ /g, "-")}`, traffic: 9100 - i * 610 })),
+      top_pages: ["", "collections/linen", "collections/pants", "blogs/care/how-to-wash-linen", "products/linen-wide-leg-pant"].map((p, i) => ({
+        url: `https://${d}/${p}`, keywords: 4200 - i * 700, traffic: 310000 - i * 52000 })),
+      competitors: [["outdoorvoices.com", 6120, 31200, 410000, 14.2], ["girlfriend.com", 4380, 21800, 260000, 16.8], ["alo.com", 3910, 52000, 980000, 18.1],
+        ["everlane.com", 3500, 61000, 1100000, 19.4]].map(([domain, shared, kw, tr, ap]) => ({ domain, shared_keywords: shared, organic_keywords: kw, organic_traffic: tr, avg_position: ap })),
+      errors: [], fetched_at: at(2 * H),
+    };
+  }
+  if (path === "/research/keyword") {
+    const k = String(q.keyword ?? "linen pants women");
+    const ideas = seoKw.map((x, i) => ({ keyword: i ? `${x}` : `${k} high waisted`, search_volume: 14800 - i * 1100, cpc: 0.4 + i * 0.15, difficulty: 12 + i * 7, intent: intents[i % 4] }));
+    return {
+      keyword: k, location_code: 2840, search_volume: 22200, cpc: 1.12, competition: 0.86, difficulty: 37, intent: "commercial",
+      trend: Array.from({ length: 12 }, (_, i) => {
+        const dt = new Date(now - (11 - i) * 30 * D);
+        return { month: `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`, volume: 14800 + Math.round(9000 * Math.sin(((dt.getMonth() + 9) / 12) * Math.PI) ** 2) };
+      }),
+      serp: ["quince.com", "vuori.com", "jcrew.com", "madewell.com", "abercrombie.com", "everlane.com", "uniqlo.com", "gap.com", "reddit.com", "nordstrom.com"].map((d, i) => ({
+        position: i + 1, domain: d, url: `https://${d}/linen-pants`, title: `Women's Linen Pants | ${d.split(".")[0].replace(/^\w/, (c) => c.toUpperCase())}` })),
+      suggestions: ideas, related: ideas.slice(2), questions: ideas.filter((x) => /^(how|what)/.test(x.keyword)), errors: [], fetched_at: at(H),
+    };
+  }
+  if (path === "/research/backlinks") {
+    return { target: String(q.target ?? "vuori.com"), backlinks: 1840000, referring_domains: 21400, referring_ips: 15800, rank: 612, broken_backlinks: 3100, dofollow_share: 0.71,
+      top_referring: ["vogue.com", "gq.com", "nytimes.com", "runnersworld.com", "wired.com", "forbes.com"].map((d, i) => ({ domain: d, rank: 890 - i * 31, backlinks: 410 - i * 52, first_seen: day(400 - i * 40) })),
+      errors: [], fetched_at: at(3 * H) };
+  }
+  if (clientOf && path.endsWith("/kpis")) {
+    const dd = Number(q.days ?? 28);
+    const daily = Array.from({ length: dd }, (_, i) => ({ day: day(dd - i + 2), clicks: 40 + ((i * 13) % 17) + Math.round(i * 0.8), impressions: 2100 + ((i * 57) % 400) + i * 12 }));
+    return {
+      days: dd,
+      clicks: { current: 1480, previous: 1210 }, impressions: { current: 66400, previous: 61900 }, ctr: { current: 0.0223, previous: 0.0195 },
+      position: { current: 14.2, previous: 16.9 }, sessions: { current: 9800, previous: 9100 }, organic_sessions: { current: 3120, previous: 2760 },
+      conversions: { current: 84, previous: 91 }, revenue: { current: 11240, previous: 12020 }, daily,
+      health: { score: 72, open: 11, critical: 0, high: 2, medium: 5, low: 4, fixed: 9, by_type: [] },
+      competitors: 4, keywords_suggested: 3, keywords_approved: 7, competitor_keywords: 380,
+    };
+  }
+  if (clientOf && path.endsWith("/gsc")) {
+    const pages = q.kind === "pages";
+    const rows = (pages ? ["", "collections/linen", "collections/denim", "products/wide-leg-jean", "blogs/journal/how-to-wash-linen", "pages/about"] : seoKw)
+      .map((x, i) => ({ dimension: pages ? `https://northlinedenim.co/${x}` : x, clicks: 310 - i * 24, impressions: 9100 - i * 610, ctr: (310 - i * 24) / (9100 - i * 610), position: 3.2 + i * 1.7 }));
+    const s2 = String(q.search ?? "").toLowerCase();
+    return rows.filter((r) => r.dimension.includes(s2));
+  }
+  if (clientOf && path.endsWith("/audit-summary")) {
+    return { score: 72, open: 11, critical: 0, high: 2, medium: 5, low: 4, fixed: 9,
+      by_type: [["redirect_chain", "high", 2], ["canonical", "medium", 3], ["cwv_lcp", "medium", 1], ["image_size", "medium", 1], ["alt_text", "low", 4]]
+        .map(([finding_type, severity, count]) => ({ finding_type, severity, count })) };
+  }
   if (clientOf && path.endsWith("/target-keywords")) {
     const rows = [
       ["linen pants women", 22000, 34, "commercial", "p1", "suggested", ["vuori.com"], "Vuori ranks #1; we sell three linen cuts"],

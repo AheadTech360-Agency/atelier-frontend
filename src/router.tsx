@@ -1,4 +1,9 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+} from "@tanstack/react-router";
 import { Shell } from "./components/Shell";
 import { useSession } from "./lib/session";
 import { LoginPage, NotOnTeam, ServerUnreachable } from "./routes/login";
@@ -10,6 +15,11 @@ import { BotsPage } from "./routes/bots";
 import { TasksPage } from "./routes/tasks";
 import { ReportsPage } from "./routes/reports";
 import { SettingsPage } from "./routes/settings";
+import {
+  BacklinksPage,
+  DomainResearchPage,
+  KeywordResearchPage,
+} from "./routes/research";
 
 function Root() {
   const { session, loading, role, meError } = useSession();
@@ -45,7 +55,11 @@ export type InboxSearch = {
 };
 
 const routes = [
-  createRoute({ getParentRoute: () => rootRoute, path: "/", component: OverviewPage }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: OverviewPage,
+  }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/inbox",
@@ -60,30 +74,74 @@ const routes = [
       stale: str(s.stale),
     }),
   }),
-  createRoute({ getParentRoute: () => rootRoute, path: "/clients", component: ClientsPage }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/clients",
+    component: ClientsPage,
+  }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/clients/$clientId",
     component: ClientPage,
-    validateSearch: (s: Record<string, unknown>): { tab?: string } => ({ tab: str(s.tab) }),
+    validateSearch: (s: Record<string, unknown>): { tab?: string } => ({
+      tab: str(s.tab),
+    }),
   }),
-  createRoute({ getParentRoute: () => rootRoute, path: "/bots", component: BotsPage }),
-  createRoute({ getParentRoute: () => rootRoute, path: "/tasks", component: TasksPage }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/research/domain",
+    component: DomainResearchPage,
+    validateSearch: (
+      s: Record<string, unknown>,
+    ): { d?: string; c?: string } => ({ d: str(s.d), c: str(s.c) }),
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/research/keywords",
+    component: KeywordResearchPage,
+    validateSearch: (
+      s: Record<string, unknown>,
+    ): { k?: string; c?: string } => ({ k: str(s.k), c: str(s.c) }),
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/research/backlinks",
+    component: BacklinksPage,
+    validateSearch: (s: Record<string, unknown>): { d?: string } => ({
+      d: str(s.d),
+    }),
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/bots",
+    component: BotsPage,
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/tasks",
+    component: TasksPage,
+  }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/reports",
     component: ReportsPage,
-    validateSearch: (s: Record<string, unknown>): { id?: string; type?: string } => ({ id: str(s.id), type: str(s.type) }),
+    validateSearch: (
+      s: Record<string, unknown>,
+    ): { id?: string; type?: string } => ({ id: str(s.id), type: str(s.type) }),
   }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/settings",
     component: SettingsPage,
-    validateSearch: (s: Record<string, unknown>): { tab?: string } => ({ tab: str(s.tab) }),
+    validateSearch: (s: Record<string, unknown>): { tab?: string } => ({
+      tab: str(s.tab),
+    }),
   }),
 ];
 
-export const router = createRouter({ routeTree: rootRoute.addChildren(routes) });
+export const router = createRouter({
+  routeTree: rootRoute.addChildren(routes),
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

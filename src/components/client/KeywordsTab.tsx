@@ -23,6 +23,8 @@ import {
   errorText,
   useToast,
 } from "../ui";
+import { TargetKeywordsPanel } from "./TargetKeywordsPanel";
+import { Intent, Kd } from "../seo";
 import type { Competitor } from "@/api-types/Competitor";
 import type { CompetitorKeyword } from "@/api-types/CompetitorKeyword";
 
@@ -31,12 +33,23 @@ const n = (v: number | null | undefined) => (v == null ? "–" : fmt.format(Math
 
 const STATUS_TONE: Record<string, "ok" | "neutral" | "p4"> = { confirmed: "ok", suggested: "neutral", ignored: "p4" };
 
-/** Who each client competes with in search, and the keywords those competitors rank for. */
-export function KeywordsTab({ clientId }: { clientId: string }) {
+/** Who the client competes with in search, and what each of them ranks for. */
+export function CompetitorsTab({ clientId }: { clientId: string }) {
   const [picked, setPicked] = useState<string>("");
   return (
     <div className="flex flex-col gap-6">
       <CompetitorsPanel clientId={clientId} picked={picked} onPick={setPicked} />
+      <CompetitorKeywordsPanel clientId={clientId} picked={picked} onPick={setPicked} />
+    </div>
+  );
+}
+
+/** The client's target keywords, and the full pool of keywords its competitors rank for. */
+export function KeywordsTab({ clientId }: { clientId: string }) {
+  const [picked, setPicked] = useState<string>("");
+  return (
+    <div className="flex flex-col gap-6">
+      <TargetKeywordsPanel clientId={clientId} />
       <CompetitorKeywordsPanel clientId={clientId} picked={picked} onPick={setPicked} />
     </div>
   );
@@ -357,8 +370,8 @@ function CompetitorKeywordsPanel({ clientId, picked, onPick }: { clientId: strin
                 <tr key={k.id}>
                   <td className="px-4 py-2 font-medium">{k.keyword}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{n(k.search_volume)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{k.difficulty ?? "–"}</td>
-                  <td className="px-3 py-2">{k.intent === "unknown" ? <span className="text-ink-3">–</span> : humanize(k.intent)}</td>
+                  <td className="px-3 py-2 text-right"><Kd value={k.difficulty} /></td>
+                  <td className="px-3 py-2"><Intent value={k.intent} /></td>
                   <td className="px-3 py-2">{k.competitor_domain}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{k.position ?? "–"}</td>
                   <td className="max-w-[28ch] truncate px-4 py-2">

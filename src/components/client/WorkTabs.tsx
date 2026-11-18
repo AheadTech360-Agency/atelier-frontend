@@ -14,13 +14,13 @@ import type { StageCount } from "@/api-types/StageCount";
 
 const SEV_TONE: Record<string, "p1" | "p2" | "p3" | "p4" | "neutral"> = { critical: "p1", high: "p2", medium: "p3", low: "p4", info: "neutral" };
 
-export function FindingsTab({ clientId }: { clientId: string }) {
+export function FindingsTab({ clientId, findingType = "" }: { clientId: string; findingType?: string }) {
   const { canReview } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
   const [status, setStatus] = useState("open");
   const [severity, setSeverity] = useState("");
-  const q = usePagedList<Finding>(["findings", clientId], "/findings", { client_id: clientId, status, severity });
+  const q = usePagedList<Finding>(["findings", clientId], "/findings", { client_id: clientId, status, severity, finding_type: findingType || undefined });
   const update = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => api.patch(`/findings/${id}`, { status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["findings", clientId] }),
@@ -29,7 +29,7 @@ export function FindingsTab({ clientId }: { clientId: string }) {
 
   return (
     <Panel
-      title="Technical findings"
+      title={findingType ? `Findings: ${humanize(findingType)}` : "All findings"}
       actions={
         <div className="flex gap-2">
           <Select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="h-8 w-auto">
