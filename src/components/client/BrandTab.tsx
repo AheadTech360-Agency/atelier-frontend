@@ -15,6 +15,7 @@ const ACTION_TYPES = [
   ["publish_pin", "Publish Pinterest pins"],
   ["syndicate_article", "Syndicate articles (Medium, LinkedIn, Substack)"],
   ["submit_directory_listing", "Submit directory listings"],
+  ["publish_backlink_post", "Post on approved link sites"],
 ] as const;
 
 export function BrandTab({ clientId }: { clientId: string }) {

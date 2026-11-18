@@ -9,7 +9,7 @@ import { Badge, Button, Checkbox, ConfirmDelete, Dialog, EmptyState, ErrorNote, 
 import type { Target } from "@/api-types/Target";
 import type { TargetInput } from "@/api-types/TargetInput";
 
-const CATEGORIES = ["syndication", "directory", "social", "review_platform", "journalist_feed", "competitor", "forum_watch", "other"];
+const CATEGORIES = ["syndication", "directory", "social", "review_platform", "journalist_feed", "competitor", "forum_watch", "link_site", "other"];
 const DIRECTION_LABEL: Record<string, string> = { read: "Read from", post: "Post to", both: "Read and post" };
 
 export function TargetsTab({ clientId }: { clientId: string }) {
