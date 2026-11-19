@@ -91,7 +91,7 @@ const KINDS: Record<
   },
   shopify: {
     name: "Shopify",
-    what: "Blog posts: the Content Writer publishes approved posts here, signed in with Google as a store collaborator. No token, no access beyond the blog.",
+    what: "Bots work in the store admin, signed in with Google as a collaborator: approved blog posts, titles, meta descriptions, and product and collection copy. No token needed.",
     fields: [
       {
         key: "store",
@@ -114,7 +114,7 @@ const KINDS: Record<
       },
     ],
     token:
-      "Give that Google account access first: Shopify Partner Dashboard > Stores > Add store > Request access, and tick only Online Store: Blog posts and pages. The store owner approves it.",
+      "Give that Google account access first: Shopify Partner Dashboard > Stores > Add store > Request access, with Products and Online Store at least. The store owner approves it.",
     noToken: true,
   },
 };
