@@ -7,6 +7,7 @@ export type IntegrationInput = {
 /**
  * github: repo ("owner/name"), default_branch (optional, read from GitHub when empty).
  * sanity: project_id, dataset, api_version (optional).
+ * shopify: store (name.myshopify.com or the admin URL), blog_url and login_email (optional). No token.
  */
 config: Record<string, string>, 
 /**

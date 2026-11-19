@@ -64,7 +64,7 @@ const SETUP = [
   {
     id: "code",
     label: "Code & CMS",
-    hint: "Sanity and GitHub, so bots can change the site after approval",
+    hint: "Shopify, Sanity and GitHub: where bots post blogs and change the site after approval",
   },
   {
     id: "targets",

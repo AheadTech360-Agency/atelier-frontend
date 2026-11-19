@@ -5,34 +5,117 @@ import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { agentName, ago } from "@/lib/format";
 import { ChangePanel } from "../ChangePanel";
-import { Badge, Button, ConfirmDelete, Dialog, EmptyState, ErrorNote, Panel, Skeleton, TextField, errorText, useToast } from "../ui";
+import {
+  Badge,
+  Button,
+  ConfirmDelete,
+  Dialog,
+  EmptyState,
+  ErrorNote,
+  Panel,
+  Skeleton,
+  TextField,
+  errorText,
+  useToast,
+} from "../ui";
 import type { Integration } from "@/api-types/Integration";
 import type { IntegrationCheck } from "@/api-types/IntegrationCheck";
 import type { IntegrationInput } from "@/api-types/IntegrationInput";
 import type { Action } from "@/api-types/Action";
 
-type Kind = "github" | "sanity";
+type Kind = "github" | "sanity" | "shopify";
 
-const KINDS: Record<Kind, { name: string; what: string; fields: { key: string; label: string; hint: string; placeholder?: string; required?: boolean }[]; token: string }> = {
+const KINDS: Record<
+  Kind,
+  {
+    name: string;
+    what: string;
+    fields: {
+      key: string;
+      label: string;
+      hint: string;
+      placeholder?: string;
+      required?: boolean;
+    }[];
+    token: string;
+    noToken?: boolean;
+  }
+> = {
   sanity: {
     name: "Sanity",
     what: "Content: SEO titles and descriptions, page and blog copy, slugs, redirects. Approved changes go live right away, with Undo.",
     fields: [
-      { key: "project_id", label: "Project ID", hint: "Sanity: manage > your project > Project ID", placeholder: "3do82whm", required: true },
-      { key: "dataset", label: "Dataset", hint: "Usually production", placeholder: "production" },
-      { key: "api_version", label: "API version", hint: "Leave empty for the default", placeholder: "2025-02-19" },
+      {
+        key: "project_id",
+        label: "Project ID",
+        hint: "Sanity: manage > your project > Project ID",
+        placeholder: "3do82whm",
+        required: true,
+      },
+      {
+        key: "dataset",
+        label: "Dataset",
+        hint: "Usually production",
+        placeholder: "production",
+      },
+      {
+        key: "api_version",
+        label: "API version",
+        hint: "Leave empty for the default",
+        placeholder: "2025-02-19",
+      },
     ],
-    token: "Sanity: manage > API > Tokens > Add API token, with Editor permissions.",
+    token:
+      "Sanity: manage > API > Tokens > Add API token, with Editor permissions.",
   },
   github: {
     name: "GitHub",
     what: "Code: robots.txt, schema markup, sitemap rules, components. Approved changes open a pull request you merge here or on GitHub.",
     fields: [
-      { key: "repo", label: "Repository", hint: "owner/name, or paste the repo's URL", placeholder: "aheadtech360/website", required: true },
-      { key: "default_branch", label: "Base branch", hint: "Leave empty to use the repo's default branch", placeholder: "main" },
+      {
+        key: "repo",
+        label: "Repository",
+        hint: "owner/name, or paste the repo's URL",
+        placeholder: "aheadtech360/website",
+        required: true,
+      },
+      {
+        key: "default_branch",
+        label: "Base branch",
+        hint: "Leave empty to use the repo's default branch",
+        placeholder: "main",
+      },
     ],
     token:
       "GitHub: Settings > Developer settings > Fine-grained tokens. Only this repository, with Contents and Pull requests set to Read and write.",
+  },
+  shopify: {
+    name: "Shopify",
+    what: "Blog posts: the Content Writer publishes approved posts here, signed in with Google as a store collaborator. No token, no access beyond the blog.",
+    fields: [
+      {
+        key: "store",
+        label: "Store",
+        hint: "The store's name.myshopify.com address, or its admin URL",
+        placeholder: "your-store.myshopify.com",
+        required: true,
+      },
+      {
+        key: "blog_url",
+        label: "Blog URL",
+        hint: "Optional: the public blog page",
+        placeholder: "https://your-store.com/blogs/news",
+      },
+      {
+        key: "login_email",
+        label: "Login email",
+        hint: "Optional: the Google account signed in on the Content Writer's browser",
+        placeholder: "seo.aheadtech360@gmail.com",
+      },
+    ],
+    token:
+      "Give that Google account access first: Shopify Partner Dashboard > Stores > Add store > Request access, and tick only Online Store: Blog posts and pages. The store owner approves it.",
+    noToken: true,
   },
 };
 
@@ -43,10 +126,13 @@ export function CodeTab({ clientId }: { clientId: string }) {
   });
   const changes = useQuery({
     queryKey: ["actions", "client", clientId],
-    queryFn: () => api.get<Action[]>("/actions", { client_id: clientId, limit: 30 }),
+    queryFn: () =>
+      api.get<Action[]>("/actions", { client_id: clientId, limit: 30 }),
     // Fast while a change is being applied; slow while a pull request waits for review.
     refetchInterval: (qq) =>
-      qq.state.data?.some((a) => a.status === "approved" || a.status === "applying")
+      qq.state.data?.some(
+        (a) => a.status === "approved" || a.status === "applying",
+      )
         ? 5000
         : qq.state.data?.some((a) => a.status === "pr_open")
           ? 60_000
@@ -57,17 +143,32 @@ export function CodeTab({ clientId }: { clientId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="max-w-[80ch] text-[13.5px] text-ink-2">
-        Connect the site so bots can fix what they find. Bots plan each change and look things up through Atelier; they never see these tokens. Every
-        change waits for your approval in the inbox.
+        Connect the site so bots can post and fix what they find. Bots plan each
+        change and look things up through Atelier; they never see tokens. Every
+        post and change waits for your approval in the inbox unless you allow it
+        in Brand & claims.
       </p>
       {q.isLoading ? (
         <Skeleton rows={4} />
       ) : q.error ? (
         <ErrorNote error={q.error} />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <IntegrationCard clientId={clientId} kind="sanity" current={find("sanity")} />
-          <IntegrationCard clientId={clientId} kind="github" current={find("github")} />
+        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          <IntegrationCard
+            clientId={clientId}
+            kind="shopify"
+            current={find("shopify")}
+          />
+          <IntegrationCard
+            clientId={clientId}
+            kind="sanity"
+            current={find("sanity")}
+          />
+          <IntegrationCard
+            clientId={clientId}
+            kind="github"
+            current={find("github")}
+          />
         </div>
       )}
       <Panel title="Recent changes">
@@ -76,14 +177,29 @@ export function CodeTab({ clientId }: { clientId: string }) {
         ) : changes.error ? (
           <ErrorNote error={changes.error} />
         ) : !changes.data?.length ? (
-          <EmptyState title="No changes yet" body="When a bot plans a change for this client, it shows up here and in the inbox." />
+          <EmptyState
+            title="No changes yet"
+            body="When a bot plans a change for this client, it shows up here and in the inbox."
+          />
         ) : (
           <ul className="divide-y divide-line">
             {changes.data.map((a) => (
               <li key={a.id} className="px-4 py-3">
                 <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
                   {a.human_required_id ? (
-                    <Link to="/inbox" search={{ item: a.human_required_id, status: a.status === "proposed" ? "open" : a.status === "rejected" ? "rejected" : "approved" }} className="font-medium hover:underline">
+                    <Link
+                      to="/inbox"
+                      search={{
+                        item: a.human_required_id,
+                        status:
+                          a.status === "proposed"
+                            ? "open"
+                            : a.status === "rejected"
+                              ? "rejected"
+                              : "approved",
+                      }}
+                      className="font-medium hover:underline"
+                    >
                       {a.title}
                     </Link>
                   ) : (
@@ -103,16 +219,28 @@ export function CodeTab({ clientId }: { clientId: string }) {
   );
 }
 
-function IntegrationCard({ clientId, kind, current }: { clientId: string; kind: Kind; current?: Integration }) {
+function IntegrationCard({
+  clientId,
+  kind,
+  current,
+}: {
+  clientId: string;
+  kind: Kind;
+  current?: Integration;
+}) {
   const { isAdmin } = useSession();
   const meta = KINDS[kind];
   const qc = useQueryClient();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const refresh = () => qc.invalidateQueries({ queryKey: ["integrations", clientId] });
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: ["integrations", clientId] });
   const test = useMutation({
-    mutationFn: () => api.post<IntegrationCheck>(`/clients/${clientId}/integrations/${kind}/test`),
+    mutationFn: () =>
+      api.post<IntegrationCheck>(
+        `/clients/${clientId}/integrations/${kind}/test`,
+      ),
     onSuccess: (r) => {
       refresh();
       toast(r.message, r.ok ? "ok" : "error");
@@ -144,7 +272,11 @@ function IntegrationCard({ clientId, kind, current }: { clientId: string; kind: 
       title={meta.name}
       actions={
         isAdmin ? (
-          <Button size="sm" variant={current ? "secondary" : "primary"} onClick={() => setEditing(true)}>
+          <Button
+            size="sm"
+            variant={current ? "secondary" : "primary"}
+            onClick={() => setEditing(true)}
+          >
             {current ? "Edit" : `Connect ${meta.name}`}
           </Button>
         ) : null
@@ -153,44 +285,95 @@ function IntegrationCard({ clientId, kind, current }: { clientId: string; kind: 
       <div className="flex flex-col gap-2.5 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           {statusBadge}
-          {current?.checked_at ? <span className="text-[12.5px] text-ink-3">checked {ago(current.checked_at)}</span> : null}
+          {current?.checked_at ? (
+            <span className="text-[12.5px] text-ink-3">
+              checked {ago(current.checked_at)}
+            </span>
+          ) : null}
         </div>
         <p className="text-[13px] text-ink-2">{meta.what}</p>
+        {!current && meta.noToken ? (
+          <p className="text-[12.5px] text-ink-3">{meta.token}</p>
+        ) : null}
         {current ? (
           <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[13px]">
-            {meta.fields.map((f) => (
-              <div key={f.key} className="contents">
-                <dt className="text-ink-3">{f.label}</dt>
-                <dd className="truncate">{cfg[f.key] || <span className="text-ink-3">default</span>}</dd>
-              </div>
-            ))}
-            <dt className="text-ink-3">Token</dt>
-            <dd>{current.has_token ? "Saved" : <span className="text-p1">Missing</span>}</dd>
+            {meta.fields
+              .filter((f) => !(meta.noToken && f.key === "login_email"))
+              .map((f) => (
+                <div key={f.key} className="contents">
+                  <dt className="text-ink-3">{f.label}</dt>
+                  <dd className="truncate">
+                    {cfg[f.key] || <span className="text-ink-3">default</span>}
+                  </dd>
+                </div>
+              ))}
+            {meta.noToken ? (
+              <>
+                <dt className="text-ink-3">Login</dt>
+                <dd>
+                  Sign in with Google
+                  {cfg.login_email ? ` (${cfg.login_email})` : ""}
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt className="text-ink-3">Token</dt>
+                <dd>
+                  {current.has_token ? (
+                    "Saved"
+                  ) : (
+                    <span className="text-p1">Missing</span>
+                  )}
+                </dd>
+              </>
+            )}
           </dl>
         ) : null}
         {current?.status_note ? (
-          <p className={`rounded-md px-3 py-2 text-[13px] ${current.status === "error" ? "bg-p1-soft text-p1" : "bg-sunken text-ink-2"}`}>
+          <p
+            className={`rounded-md px-3 py-2 text-[13px] ${current.status === "error" ? "bg-p1-soft text-p1" : "bg-sunken text-ink-2"}`}
+          >
             {current.status_note}
           </p>
         ) : null}
         {current && isAdmin ? (
           <div className="flex gap-2">
-            <Button size="sm" busy={test.isPending} onClick={() => test.mutate()}>
+            <Button
+              size="sm"
+              busy={test.isPending}
+              onClick={() => test.mutate()}
+            >
               Test connection
             </Button>
-            <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setRemoving(true)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="ml-auto"
+              onClick={() => setRemoving(true)}
+            >
               Disconnect
             </Button>
           </div>
         ) : null}
       </div>
-      {editing ? <IntegrationDialog clientId={clientId} kind={kind} current={current} onClose={() => setEditing(false)} /> : null}
+      {editing ? (
+        <IntegrationDialog
+          clientId={clientId}
+          kind={kind}
+          current={current}
+          onClose={() => setEditing(false)}
+        />
+      ) : null}
       <ConfirmDelete
         open={removing}
         onClose={() => setRemoving(false)}
         thing={`${meta.name} connection`}
         name={meta.name}
-        consequence="Its token is deleted. Bots can no longer plan or apply changes here; past changes stay in the list."
+        consequence={
+          meta.noToken
+            ? "The Content Writer stops posting to this store. The Google login's access in Shopify stays until the store owner removes it."
+            : "Its token is deleted. Bots can no longer plan or apply changes here; past changes stay in the list."
+        }
         busy={remove.isPending}
         onConfirm={() => remove.mutate()}
       />
@@ -198,19 +381,31 @@ function IntegrationCard({ clientId, kind, current }: { clientId: string; kind: 
   );
 }
 
-function IntegrationDialog({ clientId, kind, current, onClose }: { clientId: string; kind: Kind; current?: Integration; onClose: () => void }) {
+function IntegrationDialog({
+  clientId,
+  kind,
+  current,
+  onClose,
+}: {
+  clientId: string;
+  kind: Kind;
+  current?: Integration;
+  onClose: () => void;
+}) {
   const meta = KINDS[kind];
   const qc = useQueryClient();
   const toast = useToast();
   const cfg = (current?.config ?? {}) as Record<string, string>;
-  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(meta.fields.map((f) => [f.key, cfg[f.key] ?? ""])));
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(meta.fields.map((f) => [f.key, cfg[f.key] ?? ""])),
+  );
   const [token, setToken] = useState("");
   const [result, setResult] = useState<IntegrationCheck | null>(null);
   const save = useMutation({
     mutationFn: () =>
       api.put<IntegrationCheck>(`/clients/${clientId}/integrations/${kind}`, {
         config: values,
-        token: token.trim() || null,
+        token: meta.noToken ? null : token.trim() || null,
       } satisfies IntegrationInput),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["integrations", clientId] });
@@ -223,7 +418,9 @@ function IntegrationDialog({ clientId, kind, current, onClose }: { clientId: str
     },
     onError: (e) => toast(errorText(e), "error"),
   });
-  const missing = meta.fields.some((f) => f.required && !values[f.key]?.trim()) || (!current?.has_token && !token.trim());
+  const missing =
+    meta.fields.some((f) => f.required && !values[f.key]?.trim()) ||
+    (!meta.noToken && !current?.has_token && !token.trim());
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!missing) save.mutate();
@@ -239,13 +436,23 @@ function IntegrationDialog({ clientId, kind, current, onClose }: { clientId: str
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" form={`int-${kind}`} busy={save.isPending} disabled={missing}>
+          <Button
+            variant="primary"
+            type="submit"
+            form={`int-${kind}`}
+            busy={save.isPending}
+            disabled={missing}
+          >
             Save and test
           </Button>
         </>
       }
     >
-      <form id={`int-${kind}`} onSubmit={submit} className="flex flex-col gap-3">
+      <form
+        id={`int-${kind}`}
+        onSubmit={submit}
+        className="flex flex-col gap-3"
+      >
         {meta.fields.map((f) => (
           <TextField
             key={f.key}
@@ -257,15 +464,29 @@ function IntegrationDialog({ clientId, kind, current, onClose }: { clientId: str
             onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
           />
         ))}
-        <TextField
-          label={current?.has_token ? "New token" : "Token"}
-          type="password"
-          value={token}
-          autoComplete="new-password"
-          onChange={(e) => setToken(e.target.value)}
-          hint={current?.has_token ? `Leave empty to keep the saved token. ${meta.token}` : meta.token}
-        />
-        {result && !result.ok ? <p className="rounded-md bg-p1-soft px-3 py-2 text-[13px] text-p1">{result.message}</p> : null}
+        {meta.noToken ? (
+          <p className="rounded-md bg-sunken px-3 py-2 text-[13px] text-ink-2">
+            {meta.token}
+          </p>
+        ) : (
+          <TextField
+            label={current?.has_token ? "New token" : "Token"}
+            type="password"
+            value={token}
+            autoComplete="new-password"
+            onChange={(e) => setToken(e.target.value)}
+            hint={
+              current?.has_token
+                ? `Leave empty to keep the saved token. ${meta.token}`
+                : meta.token
+            }
+          />
+        )}
+        {result && !result.ok ? (
+          <p className="rounded-md bg-p1-soft px-3 py-2 text-[13px] text-p1">
+            {result.message}
+          </p>
+        ) : null}
       </form>
     </Dialog>
   );

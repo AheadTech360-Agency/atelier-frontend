@@ -253,6 +253,12 @@ export async function demoRequest(method: string, path: string, query: Record<st
       Array.from({ length: 6 }, (_, i) => ({ source: "pagespeed", metric: q.metric, dimension, value: Math.round((v + step * (i - 5)) * 1000) / 1000, observed_on: day((5 - i) * 7 + 2) })));
   }
   if (path === "/metrics") return metricPoints(cid ?? NORTHLINE);
+  if (clientOf && path.endsWith("/integrations")) {
+    return [{ id: "int-shop", client_id: clientOf, kind: "shopify", has_token: false, status: "ok",
+      status_note: "Store found at northlinedenim.co. Blog page loads. The Content Writer posts as seo.aheadtech360@gmail.com, signed in with Google on its browser.",
+      config: { store: "northline-denim", admin_url: "https://admin.shopify.com/store/northline-denim", blog_url: "https://northlinedenim.co/blogs/journal", login_email: "seo.aheadtech360@gmail.com" },
+      checked_at: at(2 * 3_600_000), created_at: at(3 * 86_400_000), updated_at: at(2 * 3_600_000) }];
+  }
   if (clientOf && path.endsWith("/profile")) {
     return { client_id: clientOf, brand_voice: "Plain, warm, practical. Talks about how clothes wear over years.", voice_rules: [], approved_claims: [], banned_terms: [], post_cadence_per_week: 2, autonomy: {}, updated_at: at(D) };
   }
