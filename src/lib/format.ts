@@ -11,6 +11,20 @@ export const AGENTS: { id: string; name: string; short: string }[] = [
   { id: "strategist", name: "Strategist", short: "Strategist" },
 ];
 
+/** Client phases, in order: what may go live in each (the server enforces it in can_publish). */
+export const PHASES: { id: string; name: string; allows: string }[] = [
+  { id: "setup", name: "Setup", allows: "Research and drafts only. Nothing goes live." },
+  { id: "audit", name: "Audit", allows: "Research and drafts only. Nothing goes live." },
+  { id: "fix_first", name: "Fix first", allows: "Approved site fixes go live: code, CMS, titles, metas, schema, redirects." },
+  { id: "strategy", name: "Strategy", allows: "Site fixes, plus plans such as the topic calendar." },
+  { id: "execution", name: "Execution", allows: "Everything: posts, outreach, link sites, syndication." },
+  { id: "loop", name: "Loop", allows: "Everything, on the ongoing schedule." },
+];
+
+export function phaseName(id: string | null | undefined): string {
+  return PHASES.find((p) => p.id === id)?.name ?? "Setup";
+}
+
 export function agentName(id: string | null | undefined, short = false): string {
   if (!id) return "Human";
   const a = AGENTS.find((x) => x.id === id);

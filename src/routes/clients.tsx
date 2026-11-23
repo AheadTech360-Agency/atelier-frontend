@@ -8,6 +8,7 @@ import { Button, Dialog, EmptyState, ErrorNote, PageHeader, Skeleton, StatusBadg
 import type { Client } from "@/api-types/Client";
 import type { ClientInput } from "@/api-types/ClientInput";
 import { usePageTitle } from "@/lib/title";
+import { PHASES, phaseName } from "@/lib/format";
 
 export function ClientsPage() {
   usePageTitle("Clients");
@@ -43,7 +44,8 @@ export function ClientsPage() {
               >
                 <span className="font-medium">{c.name}</span>
                 <span className="truncate text-ink-3">{c.domain}</span>
-                <span className="ml-auto">
+                <span className="ml-auto flex items-center gap-2">
+                  <span className="text-[12.5px] text-ink-3">{phaseName(c.phase)}</span>
                   <StatusBadge s={c.status} />
                 </span>
               </Link>
@@ -66,6 +68,7 @@ export function ClientDialog({ open, onClose, client }: { open: boolean; onClose
     status: client?.status ?? "active",
     timezone: client?.timezone ?? "America/New_York",
     notes: client?.notes ?? "",
+    phase: client?.phase ?? "setup",
   });
   const save = useMutation({
     mutationFn: () => (client ? api.put<Client>(`/clients/${client.id}`, form) : api.post<Client>("/clients", form)),
@@ -115,6 +118,17 @@ export function ClientDialog({ open, onClose, client }: { open: boolean; onClose
           </label>
           <TextField label="Time zone" value={form.timezone ?? ""} onChange={set("timezone")} hint="IANA name, e.g. America/Los_Angeles" />
         </div>
+        <label className="flex flex-col gap-1 text-[13px] font-medium">
+          Phase
+          <select value={form.phase ?? "setup"} onChange={set("phase")} className="h-9 rounded-md border border-line-strong bg-surface px-2 font-normal">
+            {PHASES.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <span className="text-[12.5px] font-normal text-ink-3">{PHASES.find((p) => p.id === (form.phase ?? "setup"))?.allows}</span>
+        </label>
         <TextField label="Notes" value={form.notes ?? ""} onChange={set("notes")} />
       </form>
     </Dialog>

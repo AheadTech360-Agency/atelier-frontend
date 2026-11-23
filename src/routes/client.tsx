@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import { usePageTitle } from "@/lib/title";
 import { ClientDialog } from "./clients";
+import { phaseName } from "@/lib/format";
 import { DeleteButton } from "@/components/DeleteButton";
 import { ConnectionsTab } from "@/components/client/ConnectionsTab";
 import { TargetsTab } from "@/components/client/TargetsTab";
@@ -121,6 +122,7 @@ export function ClientPage() {
               {c.domain}
             </a>
             <StatusBadge s={c.status} />
+            <span className="text-ink-3">Phase: {phaseName(c.phase)}</span>
           </span>
         }
         actions={

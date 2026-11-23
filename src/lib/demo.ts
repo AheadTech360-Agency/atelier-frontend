@@ -17,8 +17,8 @@ const uid = () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;
 const NORTHLINE = uid();
 const MARLOW = uid();
 export const clients = [
-  { id: NORTHLINE, name: "Northline Denim", domain: "northlinedenim.co", status: "active", timezone: "America/New_York", notes: "", created_at: at(40 * D), updated_at: at(2 * D) },
-  { id: MARLOW, name: "Marlow & Pine", domain: "marlowandpine.co", status: "active", timezone: "America/Los_Angeles", notes: "", created_at: at(21 * D), updated_at: at(D) },
+  { id: NORTHLINE, name: "Northline Denim", domain: "northlinedenim.co", status: "active", timezone: "America/New_York", notes: "", phase: "execution", created_at: at(40 * D), updated_at: at(2 * D) },
+  { id: MARLOW, name: "Marlow & Pine", domain: "marlowandpine.co", status: "active", timezone: "America/Los_Angeles", notes: "", phase: "fix_first", created_at: at(21 * D), updated_at: at(D) },
 ];
 
 const AGENTS = [
