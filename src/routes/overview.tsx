@@ -212,7 +212,7 @@ function WeekLegend() {
 }
 
 /**
- * Seven bots by the last seven days: one mark per day a bot ran, coloured by its worst run that
+ * Bots by the last seven days: one mark per day a bot ran, coloured by its worst run that
  * day. A day without a run shows a faint dot, so a silent bot is as easy to spot as a failing one.
  */
 function BotsWeek({ runs }: { runs: Run[] }) {

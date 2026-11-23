@@ -296,7 +296,7 @@ function KeysTab() {
   return (
     <Panel title="Bot API keys" actions={<Button size="sm" variant="primary" onClick={() => setCreating(true)}>Create key</Button>}>
       <p className="border-b border-line px-4 py-2.5 text-[13px] text-ink-2">
-        One team key connects all seven bots. Add it to Rakazo once, under Integrations, and every bot uses it. You can change which
+        One team key connects all ten bots. Add it to Rakazo once, under Integrations, and every bot uses it. You can change which
         clients a key covers at any time without making a new key.
       </p>
       {q.isLoading ? (

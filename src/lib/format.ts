@@ -1,6 +1,4 @@
-import type { AgentId } from "@/api-types/AgentId";
-
-export const AGENTS: { id: AgentId; name: string; short: string }[] = [
+export const AGENTS: { id: string; name: string; short: string }[] = [
   { id: "seo_lead", name: "SEO Lead", short: "Lead" },
   { id: "technical_auditor", name: "Technical Auditor", short: "Auditor" },
   { id: "on_page", name: "On-Page Optimizer", short: "On-Page" },
@@ -8,6 +6,9 @@ export const AGENTS: { id: AgentId; name: string; short: string }[] = [
   { id: "off_page", name: "Off-Page Optimizer", short: "Off-Page" },
   { id: "ai_search", name: "AI Search Optimizer", short: "AI Search" },
   { id: "local_seo", name: "Local SEO Optimizer", short: "Local" },
+  { id: "developer", name: "Developer", short: "Developer" },
+  { id: "analyst", name: "Analyst", short: "Analyst" },
+  { id: "strategist", name: "Strategist", short: "Strategist" },
 ];
 
 export function agentName(id: string | null | undefined, short = false): string {

@@ -26,18 +26,18 @@ import type { Connection } from "@/api-types/Connection";
 import type { ConnectionInput } from "@/api-types/ConnectionInput";
 
 export const PLATFORMS: { id: string; label: string; agents: string[] }[] = [
-  { id: "shopify", label: "Shopify", agents: ["technical_auditor", "on_page", "content_writer", "ai_search", "local_seo"] },
-  { id: "gsc", label: "Google Search Console", agents: ["seo_lead", "technical_auditor", "on_page", "content_writer"] },
-  { id: "ga4", label: "Google Analytics 4", agents: ["seo_lead"] },
-  { id: "merchant_center", label: "Google Merchant Center", agents: ["technical_auditor", "ai_search"] },
+  { id: "shopify", label: "Shopify", agents: ["technical_auditor", "on_page", "content_writer", "ai_search", "local_seo", "developer"] },
+  { id: "gsc", label: "Google Search Console", agents: ["seo_lead", "technical_auditor", "on_page", "content_writer", "analyst", "strategist"] },
+  { id: "ga4", label: "Google Analytics 4", agents: ["seo_lead", "analyst", "strategist"] },
+  { id: "merchant_center", label: "Google Merchant Center", agents: ["technical_auditor", "ai_search", "analyst"] },
   { id: "gbp", label: "Google Business Profile", agents: ["local_seo"] },
   { id: "pinterest", label: "Pinterest", agents: ["off_page"] },
   { id: "medium", label: "Medium", agents: ["off_page"] },
   { id: "linkedin", label: "LinkedIn", agents: ["off_page"] },
   { id: "substack", label: "Substack", agents: ["off_page"] },
   { id: "email", label: "Outreach mailbox", agents: ["off_page"] },
-  { id: "rank_tracker", label: "Rank tracker", agents: ["seo_lead", "ai_search", "local_seo"] },
-  { id: "backlinks", label: "Backlink tool", agents: ["off_page", "seo_lead"] },
+  { id: "rank_tracker", label: "Rank tracker", agents: ["seo_lead", "ai_search", "local_seo", "analyst", "strategist"] },
+  { id: "backlinks", label: "Backlink tool", agents: ["off_page", "seo_lead", "analyst", "strategist"] },
   { id: "directory", label: "Directory listing", agents: ["off_page", "local_seo"] },
   { id: "other", label: "Other", agents: [] },
 ];
