@@ -29,6 +29,9 @@ const AGENTS = [
   ["off_page", "Off-Page Optimizer", "Syndication, pins, directory listings and link outreach drafts.", "Weekdays"],
   ["ai_search", "AI Search Optimizer", "How often the brand is cited in ChatGPT, Gemini and AI Overviews.", "Weekly, Wednesdays"],
   ["local_seo", "Local SEO Optimizer", "Google Business Profile and local listings.", "Weekly"],
+  ["developer", "Developer", "Builds approved site changes and fixes in code and the CMS.", "Weekdays"],
+  ["analyst", "Analyst", "Measures traffic, rankings and conversions, and reports what changed.", "Daily"],
+  ["strategist", "Strategist", "Sets each client's priorities and plan for the next weeks.", "Weekly, Mondays"],
 ] as const;
 export const agents = AGENTS.map(([id, name, description, schedule_label], i) => ({
   id, name, description, schedule_label, rakazo_webhook_url: i < 5 ? "https://hooks.rakazo.example/run" : null, sort_order: i,
@@ -88,7 +91,7 @@ export const runs: Run[] = (() => {
   const out: Run[] = [];
   const plan: Record<string, number[]> = {
     seo_lead: [0, 1, 2, 3, 4, 5, 6], technical_auditor: [0, 3, 6], on_page: [0, 3], content_writer: [1, 3, 5],
-    off_page: [0, 1, 2, 5, 6], ai_search: [2], local_seo: [],
+    off_page: [0, 1, 2, 5, 6], ai_search: [2], local_seo: [], developer: [1, 4], analyst: [0, 1, 2, 3, 4, 5, 6], strategist: [0],
   };
   const odd: Record<string, string> = { "off_page|1": "partial", "technical_auditor|3": "failed", "ai_search|2": "partial", "content_writer|5": "partial" };
   const summary: Record<string, string> = {
@@ -99,6 +102,9 @@ export const runs: Run[] = (() => {
     off_page: "Scored 3 prospects and drafted 1 pitch.",
     ai_search: "Asked ChatGPT 20 questions; Gemini blocked by a verification check.",
     local_seo: "",
+    developer: "Opened 1 approved redirect change and checked it live.",
+    analyst: "Saved daily traffic and ranking numbers for every client.",
+    strategist: "Updated the priorities for the next two weeks.",
   };
   for (const [agent, days] of Object.entries(plan)) {
     for (const d of days) {
